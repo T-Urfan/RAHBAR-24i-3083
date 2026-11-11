@@ -11,9 +11,9 @@ resources:
   - ../prod
   - ollama.yaml
 images:
-  - {name: docker.io/rahbar/rahbar-api, newName: rahbar-api, newTag: ci}
-  - {name: docker.io/rahbar/rahbar-ui, newName: rahbar-ui, newTag: ci}
-  - {name: docker.io/rahbar/rahbar-indexer, newName: rahbar-indexer, newTag: ci}
+  - {name: docker.io/taahaurfan/rahbar-api, newName: rahbar-api, newTag: ci}
+  - {name: docker.io/taahaurfan/rahbar-ui, newName: rahbar-ui, newTag: ci}
+  - {name: docker.io/taahaurfan/rahbar-indexer, newName: rahbar-indexer, newTag: ci}
 patches:
   - target: {kind: ConfigMap, name: rahbar-config}
     patch: |-
@@ -26,7 +26,7 @@ patches:
         path: /spec/template/spec/initContainers
         value:
           - name: pull-embedding-model
-            image: docker.io/rahbar/rahbar-indexer
+            image: docker.io/taahaurfan/rahbar-indexer
             imagePullPolicy: IfNotPresent
             command: ["python", "-c", "import httpx,os; r=httpx.post('http://ollama:11434/api/pull', json={'model': os.environ['EMBED_MODEL'], 'stream': False}, timeout=900); r.raise_for_status(); print(r.text)"]
             envFrom:

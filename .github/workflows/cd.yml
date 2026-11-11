@@ -99,9 +99,9 @@ jobs:
           kubectl kustomize . > /dev/null
           curl -sSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.5.0/kustomize_v5.5.0_linux_amd64.tar.gz" | tar -xz
           ./kustomize edit set image \
-            "docker.io/rahbar/rahbar-api=$REPO/rahbar-api:$SHA" \
-            "docker.io/rahbar/rahbar-ui=$REPO/rahbar-ui:$SHA" \
-            "docker.io/rahbar/rahbar-indexer=$REPO/rahbar-indexer:$SHA"
+            "docker.io/taahaurfan/rahbar-api=$REPO/rahbar-api:$SHA" \
+            "docker.io/taahaurfan/rahbar-ui=$REPO/rahbar-ui:$SHA" \
+            "docker.io/taahaurfan/rahbar-indexer=$REPO/rahbar-indexer:$SHA"
           rm kustomize
           kubectl kustomize . | grep -E "image: .*rahbar-(api|ui|indexer)" | sort -u
       - name: Deploy

@@ -7,9 +7,9 @@ kind: Kustomization
 resources:
   - ../../base
 images:
-  - {name: rahbar-api, newName: docker.io/rahbar/rahbar-api, newTag: "0000000"}
-  - {name: rahbar-ui, newName: docker.io/rahbar/rahbar-ui, newTag: "0000000"}
-  - {name: rahbar-indexer, newName: docker.io/rahbar/rahbar-indexer, newTag: "0000000"}
+  - {name: rahbar-api, newName: docker.io/taahaurfan/rahbar-api, newTag: "0000000"}
+  - {name: rahbar-ui, newName: docker.io/taahaurfan/rahbar-ui, newTag: "0000000"}
+  - {name: rahbar-indexer, newName: docker.io/taahaurfan/rahbar-indexer, newTag: "0000000"}
 patches:
   # production replicas of the ui: survive one pod being rescheduled
   - target: {kind: Deployment, name: ui}
