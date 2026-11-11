@@ -43,6 +43,7 @@ from .versioning import wants_older_version
 log = logging.getLogger("rahbar.answer")
 
 MAX_ATTEMPTS = 2            # the first try and one retry (section 3.4)
+_CONFIDENCE_RANK = {"low": 0, "medium": 1, "high": 2}
 FALLBACK_TEXT = ("Sorry, I could not produce a reliable answer right now. Please try "
                  "again, or check the official documents directly.")
 
@@ -144,6 +145,7 @@ def answer_question(question: str, retriever: Retriever, provider: LLMProvider,
             "fallback": trace.fallback, "attempts": trace.attempts,
             "rejected_citations": trace.rejected_citations, "ms": trace.ms,
             "answered_from_context": response.answered_from_context if response else None,
+            "confidence": response.confidence if response else None,
         })
 
 
@@ -212,6 +214,10 @@ def _answer(question: str, retriever: Retriever, provider: LLMProvider, settings
         return _fallback(trace.fallback or "schema", trace, passages, provider)
     if not answer.answered_from_context:
         return _abstain("model", trace, passages, provider)
+    # Measured (PIPELINE.md, "Generation"): every correct golden answer came back "high";
+    # every answer at "low" was a wrong answer or an invented one about an absent topic.
+    if _CONFIDENCE_RANK[answer.confidence] < _CONFIDENCE_RANK[settings.min_confidence]:
+        return _abstain("low_confidence", trace, passages, provider)
 
     response = _response(answer.answer, citations, True, answer.confidence, passages,
                          provider.name)

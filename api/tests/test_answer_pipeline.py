@@ -233,3 +233,25 @@ def test_asking_about_the_old_version_lifts_the_filter_and_labels_it() -> None:
     assert {x.chunk_id for x in r.retrieved} == {OLD.chunk_id, RULES.chunk_id}
     assert r.retrieved[0].superseded is True and r.retrieved[0].doc_version == "2023-08"
     assert r.citations[0].source == OLD.source
+
+
+def low(citations: list[Citation]) -> Answer:
+    return Answer(reasoning="r", answer="Contact the hostel office.", citations=citations,
+                  answered_from_context=True, confidence="low")
+
+
+def test_a_low_confidence_answer_is_declined() -> None:
+    before = counter(m.ABSTENTIONS, reason="low_confidence")
+    r = ask("How do I apply for a hostel room?", ListRetriever([RULES]),
+            Scripted(low([Citation(source=RULES.source, section=RULES.section)])))
+    assert r.answered_from_context is False and r.citations == []
+    assert r.answer == ABSTAIN_TEXT
+    assert counter(m.ABSTENTIONS, reason="low_confidence") == before + 1
+
+
+@pytest.mark.parametrize("floor, answered", [("low", True), ("medium", False), ("high", False)])
+def test_min_confidence_is_configurable(floor: str, answered: bool) -> None:
+    r = ask("q about warning?", ListRetriever([RULES]),
+            Scripted(low([Citation(source=RULES.source, section=RULES.section)])),
+            Settings(relevance_floor=0.5, min_confidence=floor))
+    assert r.answered_from_context is answered

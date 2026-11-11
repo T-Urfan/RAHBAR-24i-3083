@@ -142,7 +142,7 @@ def summarise(rows: list[dict]) -> dict:
         per_question.append({
             "id": row["id"], "type": row["type"], "must_abstain": row["must_abstain"],
             "recall@3": r3, "recall@5": r5, "citation_validity": cv,
-            "answered_from_context": answered_from_context,
+            "answered_from_context": answered_from_context, "confidence": resp.get("confidence"),
             "abstention_correct": (not answered_from_context) if row["must_abstain"] else None,
             "expect_found": hit, "cached": bool(resp.get("cached")),
             "top_score": retrieved[0].get("score") if retrieved else None,

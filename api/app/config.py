@@ -46,6 +46,13 @@ def _float(name: str, default: float, low: float | None = None,
     return value
 
 
+def _choice(name: str, default: str, allowed: tuple[str, ...]) -> str:
+    value = _str(name, default).lower()
+    if value not in allowed:
+        raise ConfigError(f"{name}={value!r} must be one of {', '.join(allowed)}")
+    return value
+
+
 def _bool(name: str, default: bool) -> bool:
     raw = _str(name, "true" if default else "false").lower()
     if raw in ("1", "true", "yes", "on"):
@@ -84,6 +91,8 @@ class Settings:
     # Cosine similarity (1 - distance) the best passage must reach before the model is
     # asked at all; below it the API abstains. Chosen from measurements (PIPELINE.md).
     relevance_floor: float = 0.60
+    # An answer the model itself rates below this is declined (low | medium | high).
+    min_confidence: str = "medium"
     temperature: float = 0.2
     llm_model: str = "llama3.2:3b"
     ollama_url: str = "http://host.minikube.internal:11434"
@@ -117,6 +126,7 @@ def get_settings() -> Settings:
         readiness_ttl_seconds=_float("READINESS_TTL_SECONDS", 5.0, low=0.0),
         top_k=_int("TOP_K", 5, minimum=1),
         relevance_floor=_float("RELEVANCE_FLOOR", 0.60, low=-1.0, high=1.0),
+        min_confidence=_choice("MIN_CONFIDENCE", "medium", ("low", "medium", "high")),
         temperature=_float("TEMPERATURE", 0.2, low=0.0, high=2.0),
         llm_model=_str("LLM_MODEL", "llama3.2:3b"),
         ollama_url=_str("OLLAMA_URL", "http://host.minikube.internal:11434"),

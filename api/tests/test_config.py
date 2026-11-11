@@ -48,3 +48,13 @@ def test_bad_values_name_the_variable(monkeypatch: pytest.MonkeyPatch, name: str
 def test_api_key_is_not_in_the_repr(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LLM_API_KEY", "not-a-real-key-123")
     assert "not-a-real-key-123" not in repr(get_settings())
+
+
+def test_min_confidence_must_be_a_known_level(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.config import ConfigError, get_settings
+
+    monkeypatch.setenv("MIN_CONFIDENCE", "HIGH")
+    assert get_settings().min_confidence == "high"
+    monkeypatch.setenv("MIN_CONFIDENCE", "sure")
+    with pytest.raises(ConfigError, match="MIN_CONFIDENCE"):
+        get_settings()

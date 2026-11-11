@@ -29,5 +29,7 @@ class StubProvider:
             f"The first one says: {top.text}",
             citations=[Citation(source=top.source, section=top.section, page=top.page)],
             answered_from_context=True,
-            confidence="low",
+            # neutral: the stub has no judgement, and MIN_CONFIDENCE (default medium)
+            # declines "low" answers from a real model
+            confidence="medium",
         )

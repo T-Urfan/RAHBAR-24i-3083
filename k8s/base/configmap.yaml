@@ -22,6 +22,8 @@ data:
   # retrieval: k and the floor below which the api abstains without asking the model
   TOP_K: "5"
   RELEVANCE_FLOOR: "0.60"
+  # answers the model rates below this are declined: every "low" answer we measured was wrong
+  MIN_CONFIDENCE: medium
   # semantic cache: lowest threshold with zero false hits on our test pairs
   CACHE_THRESHOLD: "0.95"
   # 0.1: facts and JSON want near-determinism; 0 is not needed for schema-valid output
