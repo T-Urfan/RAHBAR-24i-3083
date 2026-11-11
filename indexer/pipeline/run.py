@@ -2,9 +2,11 @@
 
     python -m pipeline.run --dummy    # week 1: three fake chunks, no model needed
     python -m pipeline.run            # the real pipeline: extract, clean, chunk, embed, store
+    python -m pipeline.run --rollback # repoint the API at the previous index (ADR 0001)
 
 Exit code 0 means the index was written; anything else fails the Job, and
-Kubernetes retries it up to the Job's backoffLimit.
+Kubernetes retries it up to the Job's backoffLimit. A failed run never touches
+the index the API is serving (see store.py).
 """
 
 from __future__ import annotations
@@ -17,12 +19,9 @@ import time
 from pathlib import Path
 
 from .config import IndexerSettings, get_settings
+from .log import log
 from .models import Chunk
-
-
-def log(msg: str, **fields: object) -> None:
-    print(json.dumps({"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                      "logger": "rahbar.indexer", "msg": msg, **fields}), flush=True)
+from .store import IndexBuildError
 
 
 def _front_matter(path: Path) -> dict[str, str]:
@@ -83,17 +82,25 @@ def run_pipeline(settings: IndexerSettings) -> int:
     return store(all_chunks, vectors, settings)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build the RAHBAR index, then exit.")
-    parser.add_argument("--dummy", action="store_true", help="write three fake chunks")
-    args = parser.parse_args()
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--dummy", action="store_true", help="write three fake chunks")
+    mode.add_argument("--rollback", action="store_true",
+                      help="repoint the API at the previous index, then exit")
+    args = parser.parse_args(argv)
     settings = get_settings()
-    log("indexer starting", dummy=args.dummy, embed_model=settings.embed_model,
-        collection=settings.collection, chroma=f"{settings.chroma_host}:{settings.chroma_port}",
+    log("indexer starting", dummy=args.dummy, rollback=args.rollback,
+        embed_model=settings.embed_model, collection=settings.collection,
+        chroma=f"{settings.chroma_host}:{settings.chroma_port}",
         pod=os.environ.get("HOSTNAME", "-"))
     started = time.perf_counter()
     try:
-        if args.dummy:
+        if args.rollback:
+            from .store import get_client, rollback
+
+            count = rollback(get_client(settings), settings).count
+        elif args.dummy:
             from .dummy import write_dummy_index
             from .store import get_client
 
@@ -103,6 +110,9 @@ def main() -> int:
     except NotImplementedError as exc:
         log("indexer stage not implemented yet", error=str(exc))
         return 2
+    except IndexBuildError as exc:
+        log("indexer refused to activate; the live index is unchanged", error=str(exc))
+        return 1
     log("indexer finished", chunks=count, seconds=round(time.perf_counter() - started, 1))
     return 0
 

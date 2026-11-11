@@ -6,6 +6,10 @@ readiness check before the real pipeline exists. It needs no model.
 The collection metadata records embed_model="dummy-768". Once you add the
 embedding-pin check (section 4.4), the API will correctly refuse to become ready
 against this index; run the real pipeline to replace it.
+
+It goes through exactly the same build-then-activate path as the real pipeline
+(store.IndexBuild + store.activate), so it never deletes the live index first.
+Infrastructure bring-up only: never evidence of retrieval quality.
 """
 
 from __future__ import annotations
@@ -16,6 +20,7 @@ from typing import Any
 
 from .config import IndexerSettings
 from .models import Chunk
+from .store import IndexBuild, activate
 
 DUMMY_MODEL = "dummy-768"
 DUMMY_DIM = 768
@@ -43,19 +48,8 @@ def fake_vector(text: str, dim: int = DUMMY_DIM) -> list[float]:
 
 
 def write_dummy_index(settings: IndexerSettings, client: Any) -> int:
-    """Rebuild the collection with the three dummy chunks. Safe to run twice."""
-    try:
-        client.delete_collection(settings.collection)
-    except Exception:  # the collection did not exist yet
-        pass
-    collection = client.create_collection(
-        name=settings.collection,
-        metadata={"hnsw:space": "cosine", "embed_model": DUMMY_MODEL, "dimension": DUMMY_DIM},
-    )
-    collection.add(
-        ids=[c.id for c in DUMMY_CHUNKS],
-        documents=[c.text for c in DUMMY_CHUNKS],
-        embeddings=[fake_vector(c.text) for c in DUMMY_CHUNKS],
-        metadatas=[c.metadata() for c in DUMMY_CHUNKS],
-    )
-    return int(collection.count())
+    """Build a new collection with the three dummy chunks and activate it.
+    Safe to run twice: the previous index keeps serving until the new one is complete."""
+    build = IndexBuild(client, settings, embed_model=DUMMY_MODEL)
+    build.add(DUMMY_CHUNKS, [fake_vector(c.text) for c in DUMMY_CHUNKS])
+    return activate(build).count
