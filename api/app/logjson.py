@@ -43,5 +43,6 @@ def configure_logging(level: str = "INFO") -> None:
     root = logging.getLogger()
     root.handlers[:] = [handler]
     root.setLevel(level.upper())
-    for noisy in ("uvicorn.access",):
+    # httpx logs every Chroma and Ollama call at INFO, which buries the one line per request
+    for noisy in ("uvicorn.access", "httpx", "httpcore", "chromadb", "posthog"):
         logging.getLogger(noisy).setLevel("WARNING")
