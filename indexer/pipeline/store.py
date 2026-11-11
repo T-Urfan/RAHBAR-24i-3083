@@ -19,6 +19,7 @@ api/app/retrieval/chroma.py (api/tests/test_index_contract.py checks it).
 
 from __future__ import annotations
 
+import re
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -46,12 +47,20 @@ def version_name(base: str, index_version: str) -> str:
     return f"{base}{VERSION_INFIX}{index_version}"
 
 
+_last_micros = 0
+
+
 def new_index_version(now: datetime | None = None) -> str:
-    """UTC timestamp plus a random suffix: sortable by time, valid in a Chroma collection
-    name, and unique even for two runs in the same clock tick (Windows clocks are coarse
-    enough for that to happen, and a CronJob run can overlap a manual one)."""
-    stamp = (now or datetime.now(timezone.utc)).strftime("%Y%m%dt%H%M%S")
-    return f"{stamp}-{secrets.token_hex(3)}"
+    """'<UTC timestamp to the microsecond>-<6 random hex>'. Versions sort in creation
+    order (gc relies on that): the timestamp strictly increases within a process even
+    when the clock does not tick between two calls (Windows clocks are coarse). The
+    random suffix keeps two processes (a CronJob run and a manual run) from colliding."""
+    global _last_micros
+    moment = now or datetime.now(timezone.utc)
+    micros = max(int(moment.timestamp() * 1_000_000), _last_micros + 1)
+    _last_micros = micros
+    exact = datetime.fromtimestamp(micros / 1_000_000, tz=timezone.utc)
+    return f"{exact.strftime('%Y%m%dt%H%M%S')}{micros % 1_000_000:06d}-{secrets.token_hex(3)}"
 
 
 def _utc_iso() -> str:
@@ -80,11 +89,18 @@ class IndexBuild:
         self.name = version_name(settings.collection, self.index_version)
         self.extra_metadata = dict(extra_metadata or {})
         self.collection: Any = None
+        self.metadata: dict[str, str | int | float | bool] = {}
         self.dimension: int | None = None
         self.written = 0
+        self._ids: set[str] = set()
+        self.create_attempted = False
+        # Set the moment the pointer may name this collection. From then on it is (or
+        # may be) live, and discard() must never delete it.
+        self.activated = False
 
     def _create(self, dimension: int) -> None:
-        metadata: dict[str, str | int | float | bool] = {
+        self.create_attempted = True
+        self.metadata = {
             **self.extra_metadata,
             "embed_model": self.embed_model,      # section 4.4: the pin, read by the API
             "dimension": dimension,
@@ -93,7 +109,7 @@ class IndexBuild:
         }
         self.collection = self.client.create_collection(
             name=self.name,
-            metadata=metadata,
+            metadata=self.metadata,
             configuration={"hnsw": {"space": DISTANCE}},
             embedding_function=None,   # we always supply our own vectors
         )
@@ -107,6 +123,14 @@ class IndexBuild:
             raise IndexBuildError(f"{len(chunks)} chunks but {len(vectors)} vectors")
         if not chunks:
             return self.written
+        # Checked here, not left to Chroma: the real client rejects duplicates inside one
+        # add() call but its behaviour across calls is version-dependent, and a silently
+        # dropped row would mean a chunk that can never be retrieved.
+        batch_ids = [c.id for c in chunks]
+        duplicates = sorted({i for i in batch_ids if batch_ids.count(i) > 1} |
+                            (set(batch_ids) & self._ids))
+        if duplicates:
+            raise IndexBuildError(f"duplicate chunk ids: {duplicates[:5]}")
         dims = {len(v) for v in vectors}
         if len(dims) != 1 or 0 in dims:
             raise IndexBuildError(f"inconsistent or empty vector dimensions: {sorted(dims)}")
@@ -124,8 +148,38 @@ class IndexBuild:
                 embeddings=vectors[start:start + WRITE_BATCH],
                 metadatas=[c.metadata() for c in part],
             )
+        self._ids.update(batch_ids)
         self.written += len(chunks)
         return self.written
+
+    def finalize(self, stats: dict[str, str | int | float | bool]) -> None:
+        """Record run statistics (amplification, document count, ...) in the new
+        collection's metadata before it goes live. The pin fields cannot be overridden.
+        Safe because this collection is not active yet and its metadata holds no
+        hnsw:space (the distance lives in its configuration)."""
+        if self.collection is None:
+            raise IndexBuildError("nothing was written; there is no collection to finalize")
+        protected = {"embed_model", "dimension", "index_version", "built_at"}
+        self.metadata = {**self.metadata,
+                         **{k: v for k, v in stats.items() if k not in protected}}
+        self.collection.modify(metadata=self.metadata)
+
+    def discard(self) -> None:
+        """Delete this unfinished collection after a failed run. Best effort: the next
+        successful run's gc removes it anyway.
+
+        Never after activation started: if the pointer update reached the server but the
+        reply was lost, or anything after it failed, this collection may be live, and
+        deleting it would leave the API pointing at nothing. Deletes by name, so a
+        collection whose create call timed out after the server made it is cleaned too."""
+        if self.activated or not self.create_attempted:
+            return
+        try:
+            self.client.delete_collection(self.name)
+            log("discarded unfinished collection", collection=self.name)
+        except Exception as exc:
+            log("could not discard unfinished collection", collection=self.name, error=str(exc))
+        self.collection = None
 
 
 @dataclass(frozen=True)
@@ -162,12 +216,17 @@ def activate(build: IndexBuild) -> Activation:
     }
     if previous and previous != build.name:
         metadata["previous"] = str(previous)    # Chroma metadata cannot hold None
+    build.activated = True                      # before modify: see IndexBuild.discard
     pointer.modify(metadata=metadata)
     log("index activated", active=build.name, previous=previous, count=count,
         embed_model=build.embed_model, dimension=build.dimension)
 
     keep = {build.name} | ({str(previous)} if previous else set())
-    removed = gc(build.client, base, keep)
+    try:
+        removed = gc(build.client, base, keep, older_than=build.index_version)
+    except Exception as exc:   # housekeeping after activation must never fail the run
+        log("gc failed; old collections are left for the next run", error=str(exc))
+        removed = ()
     return Activation(active=build.name, previous=str(previous) if previous else None,
                       index_version=build.index_version, count=count, removed=removed)
 
@@ -177,13 +236,24 @@ def _names(collections: Any) -> list[str]:
     return [c if isinstance(c, str) else c.name for c in collections]
 
 
-def gc(client: Any, base: str, keep: set[str]) -> tuple[str, ...]:
+def gc(client: Any, base: str, keep: set[str], older_than: str | None = None) -> tuple[str, ...]:
     """Delete old versions. Runs after activation, so a failure here never affects
-    what the API serves; it is logged and the Job still succeeds."""
-    prefix = f"{base}{VERSION_INFIX}"
+    what the API serves; it is logged and the Job still succeeds.
+
+    Only versions older than `older_than` are deleted: a newer version may be another
+    run's build still in progress (a manual re-index overlapping the CronJob), and
+    deleting it would crash that run. Versions sort by their UTC timestamp.
+
+    Names must match this base's version pattern exactly: a plain prefix test on
+    "rahbar-v" would also delete another index called "rahbar-v2"."""
+    pattern = re.compile(
+        rf"{re.escape(base)}{VERSION_INFIX}(?P<version>\d{{8}}t\d{{12}}-[0-9a-f]{{6}})")
     removed = []
     for name in _names(client.list_collections()):
-        if name.startswith(prefix) and name not in keep:
+        match = pattern.fullmatch(name)
+        if not match or name in keep:
+            continue
+        if older_than is None or match.group("version") < older_than:
             try:
                 client.delete_collection(name)
                 removed.append(name)
@@ -197,13 +267,19 @@ def gc(client: Any, base: str, keep: set[str]) -> tuple[str, ...]:
 def rollback(client: Any, settings: IndexerSettings) -> Activation:
     """Swap the pointer back to the previous collection (and keep the current one as
     the new 'previous', so a rollback can itself be undone)."""
-    pointer = client.get_collection(name=pointer_name(settings.collection),
-                                    embedding_function=None)
+    try:
+        pointer = client.get_collection(name=pointer_name(settings.collection),
+                                        embedding_function=None)
+    except Exception as exc:
+        raise IndexBuildError(f"no active index to roll back from ({exc})") from exc
     meta = dict(pointer.metadata or {})
     current, previous = meta.get("active"), meta.get("previous")
     if not previous:
         raise IndexBuildError("no previous index recorded; nothing to roll back to")
-    target = client.get_collection(name=str(previous), embedding_function=None)
+    try:
+        target = client.get_collection(name=str(previous), embedding_function=None)
+    except Exception as exc:
+        raise IndexBuildError(f"previous index {previous} no longer exists ({exc})") from exc
     count = int(target.count())
     if count == 0:
         raise IndexBuildError(f"previous index {previous} is empty; refusing to roll back")
