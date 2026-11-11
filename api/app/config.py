@@ -83,7 +83,7 @@ class Settings:
     top_k: int = 5
     # Cosine similarity (1 - distance) the best passage must reach before the model is
     # asked at all; below it the API abstains. Chosen from measurements (PIPELINE.md).
-    relevance_floor: float = 0.55
+    relevance_floor: float = 0.60
     temperature: float = 0.2
     llm_model: str = "llama3.2:3b"
     ollama_url: str = "http://host.minikube.internal:11434"
@@ -116,7 +116,7 @@ def get_settings() -> Settings:
         redis_port=_int("REDIS_PORT", 6379, minimum=1),
         readiness_ttl_seconds=_float("READINESS_TTL_SECONDS", 5.0, low=0.0),
         top_k=_int("TOP_K", 5, minimum=1),
-        relevance_floor=_float("RELEVANCE_FLOOR", 0.55, low=-1.0, high=1.0),
+        relevance_floor=_float("RELEVANCE_FLOOR", 0.60, low=-1.0, high=1.0),
         temperature=_float("TEMPERATURE", 0.2, low=0.0, high=2.0),
         llm_model=_str("LLM_MODEL", "llama3.2:3b"),
         ollama_url=_str("OLLAMA_URL", "http://host.minikube.internal:11434"),

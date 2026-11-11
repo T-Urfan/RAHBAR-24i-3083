@@ -1,0 +1,507 @@
+{
+  "recall@3": 0.9706,
+  "recall@5": 0.9706,
+  "recall@5_by_type": {
+    "exact": {
+      "recall@5": 1.0,
+      "questions": 4
+    },
+    "injection": {
+      "recall@5": 1.0,
+      "questions": 1
+    },
+    "ordinary": {
+      "recall@5": 0.9444,
+      "questions": 9
+    },
+    "version": {
+      "recall@5": 1.0,
+      "questions": 3
+    }
+  },
+  "citation_validity": 1.0,
+  "citations": 18,
+  "abstention_correctness": 1.0,
+  "must_abstain_questions": 4,
+  "answer_rate_on_answerable": 1.0,
+  "expect_found_rate": 0.9333,
+  "per_question": [
+    {
+      "id": "q01",
+      "type": "ordinary",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": true,
+      "cached": false,
+      "top_score": 0.868787,
+      "retrieved": [
+        "academic-rules-handbook-jun-2026.pdf / Academic Warning/Probation",
+        "grading-page.html / Warning/Probation",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 10. Bachelor Degree with Honours",
+        "academic-rules-handbook-jun-2026.pdf / 7. Awards and the Honor System",
+        "academic-rules-handbook-jun-2026.pdf / Registration of Students under Academic Warning"
+      ],
+      "answer": "2.00",
+      "seconds": 13.16
+    },
+    {
+      "id": "q02",
+      "type": "ordinary",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": true,
+      "cached": false,
+      "top_score": 0.769931,
+      "retrieved": [
+        "academic-rules-handbook-jun-2026.pdf / Academic Warning/Probation",
+        "grading-page.html / Warning/Probation",
+        "grading-page.html / Repeating a Course",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 17. Repeating a Course",
+        "academic-rules-handbook-jun-2026.pdf / Repeating a Course"
+      ],
+      "answer": "The admission of student at the University is automatically closed.",
+      "seconds": 10.94
+    },
+    {
+      "id": "q03",
+      "type": "ordinary",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": true,
+      "cached": false,
+      "top_score": 0.858803,
+      "retrieved": [
+        "prospectus-2026-academic-rules-and-regulations.pdf / 1. Attendance Requirement",
+        "academic-rules-handbook-jun-2026.pdf / Attendance Requirements",
+        "student-handbook-jun-2026.pdf / V - EXAMINATION RULES",
+        "grading-page.html / Repeating a Course",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 18. Missed Examinations"
+      ],
+      "answer": "Ineligible to appear in the final examination and assigned F/A grade",
+      "seconds": 10.44
+    },
+    {
+      "id": "q04",
+      "type": "ordinary",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": true,
+      "cached": false,
+      "top_score": 0.773548,
+      "retrieved": [
+        "fee-structure-page.html / Fee Refund Policy",
+        "academic-rules-handbook-jun-2026.pdf / Withdrawal from a Course",
+        "fee-structure-page.html / Tuition Fee (w.e.f. Fall 2026 semester)",
+        "fee-structure-page.html / Miscellaneous Fees",
+        "student-handbook-jun-2026.pdf / II - FINANCIAL RULES"
+      ],
+      "answer": "80% of the tuition fee",
+      "seconds": 10.54
+    },
+    {
+      "id": "q05",
+      "type": "ordinary",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": true,
+      "cached": false,
+      "top_score": 0.881,
+      "retrieved": [
+        "academic-rules-handbook-jun-2026.pdf / Freezing of Semester",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 21. Semester Freeze",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 30. Admission with Credit Transfer",
+        "grading-page.html / Warning/Probation",
+        "academic-rules-handbook-jun-2026.pdf / Adding or Dropping a Course"
+      ],
+      "answer": "2",
+      "seconds": 7.62
+    },
+    {
+      "id": "q06",
+      "type": "ordinary",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": true,
+      "cached": false,
+      "top_score": 0.887455,
+      "retrieved": [
+        "prospectus-2026-academic-rules-and-regulations.pdf / 8. Dean's List of Honors",
+        "academic-rules-handbook-jun-2026.pdf / Dean's List of Honors",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 9. Rector's List of Honours",
+        "academic-rules-handbook-jun-2026.pdf / Rector’s List of Honors",
+        "grading-page.html / Description of Grades"
+      ],
+      "answer": "3.50 to 3.99",
+      "seconds": 11.12
+    },
+    {
+      "id": "q07",
+      "type": "ordinary",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": true,
+      "cached": false,
+      "top_score": 0.859297,
+      "retrieved": [
+        "academic-rules-handbook-jun-2026.pdf / Rechecking of Final Exams",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 18. Missed Examinations",
+        "student-handbook-jun-2026.pdf / V - EXAMINATION RULES",
+        "academic-rules-handbook-jun-2026.pdf / Late conduct of Examination/ Missed Examination",
+        "student-handbook-jun-2026.pdf / XI. Policy on Retake Examination"
+      ],
+      "answer": "seven days",
+      "seconds": 11.3
+    },
+    {
+      "id": "q08",
+      "type": "ordinary",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": null,
+      "cached": false,
+      "top_score": 0.870354,
+      "retrieved": [
+        "academic-rules-handbook-jun-2026.pdf / 5. Unacceptable Uses of Generative AI Tools",
+        "academic-rules-handbook-jun-2026.pdf / 5. Unacceptable Uses of Generative AI Tools",
+        "student-handbook-jun-2026.pdf / XII. Policy on Generative AI Based Tools",
+        "academic-rules-handbook-jun-2026.pdf / 4. Acceptable Uses of Generative AI Tools",
+        "academic-rules-handbook-jun-2026.pdf / 4. Acceptable Uses of Generative AI Tools"
+      ],
+      "answer": "Generating entire assignment submissions and passing them off as one's own work, submitting content generated by Generative AI tools without proper acknowledgement and citation, using tools to paraphrase text and pass off the work of others as one's own, submitting assessed work where the use of Generative AI has been cited but the prompt given is in contravention of good academic practice, and using tools in ways that conflict with academic standards and guidelines.",
+      "seconds": 19.7
+    },
+    {
+      "id": "q09",
+      "type": "ordinary",
+      "must_abstain": false,
+      "recall@3": 0.5,
+      "recall@5": 0.5,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": false,
+      "cached": false,
+      "top_score": 0.8419,
+      "retrieved": [
+        "prospectus-2026-academic-rules-and-regulations.pdf / 19. Rules for Summer Semester",
+        "academic-rules-handbook-jun-2026.pdf / 6. Rules for Summer Semester",
+        "academic-rules-handbook-jun-2026.pdf / Adding or Dropping a Course",
+        "academic-rules-handbook-jun-2026.pdf / 4. Registration",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 12. Semester Registration"
+      ],
+      "answer": "TEN (10)",
+      "seconds": 12.38
+    },
+    {
+      "id": "q10",
+      "type": "exact",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": true,
+      "cached": false,
+      "top_score": 0.643271,
+      "retrieved": [
+        "academic-rules-handbook-jun-2026.pdf / Attendance Requirements",
+        "student-handbook-jun-2026.pdf / I - ACADEMIC RULES and REGULATIONS",
+        "student-handbook-jun-2026.pdf / CODE OF CONDUCT",
+        "student-handbook-jun-2026.pdf / CODE OF CONDUCT",
+        "academic-rules-handbook-jun-2026.pdf / Registration of Students under Academic Warning"
+      ],
+      "answer": "100% attendance",
+      "seconds": 12.87
+    },
+    {
+      "id": "q11",
+      "type": "exact",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": true,
+      "cached": false,
+      "top_score": 0.831386,
+      "retrieved": [
+        "fee-structure-page.html / Tuition Fee (w.e.f. Fall 2026 semester)",
+        "fee-structure-page.html / Miscellaneous Fees",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 4. Semester Course Load",
+        "student-handbook-jun-2026.pdf / II - FINANCIAL RULES",
+        "annual-report-2019-20.pdf / 1. Merit Scholarships for Bachelor Students"
+      ],
+      "answer": "Rs. 12,000",
+      "seconds": 8.69
+    },
+    {
+      "id": "q12",
+      "type": "exact",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": true,
+      "cached": false,
+      "top_score": 0.734131,
+      "retrieved": [
+        "academic-rules-handbook-jun-2026.pdf / Rechecking of Final Exams",
+        "fee-structure-page.html / Miscellaneous Fees",
+        "fee-structure-page.html / Tuition Fee (w.e.f. Fall 2026 semester)",
+        "academic-rules-handbook-jun-2026.pdf / 4. Registration",
+        "fee-structure-page.html / Fee Refund Policy"
+      ],
+      "answer": "Rs. 500",
+      "seconds": 8.3
+    },
+    {
+      "id": "q13",
+      "type": "exact",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": true,
+      "cached": false,
+      "top_score": 0.836652,
+      "retrieved": [
+        "academic-rules-handbook-jun-2026.pdf / Freezing of Semester",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 21. Semester Freeze",
+        "student-handbook-jun-2026.pdf / VI – SEMESTER RULES",
+        "grading-page.html / Warning/Probation",
+        "academic-rules-handbook-jun-2026.pdf / Adding or Dropping a Course"
+      ],
+      "answer": "A student may request freezing of their admission for up to 2 semesters along with prescribed 'Semester Freeze' charges.",
+      "seconds": 11.53
+    },
+    {
+      "id": "q14",
+      "type": "version",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": null,
+      "cached": false,
+      "top_score": 0.8529,
+      "retrieved": [
+        "academic-rules-handbook-jun-2026.pdf / Withdrawal from a Course",
+        "prospectus-2026-academic-rules-and-regulations.pdf / Withdrawal from a Course",
+        "prospectus-2026-academic-rules-and-regulations.pdf / Adding or Dropping a Course",
+        "academic-rules-handbook-jun-2026.pdf / Adding or Dropping a Course",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 26. Readmission of Former FAST- NUCES Student in graduate"
+      ],
+      "answer": "Last day of the makeup week of every semester",
+      "seconds": 9.21
+    },
+    {
+      "id": "q15",
+      "type": "version",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": true,
+      "cached": false,
+      "top_score": 0.734493,
+      "retrieved": [
+        "prospectus-2026-academic-rules-and-regulations.pdf / 3. Academic Year",
+        "academic-rules-handbook-jun-2026.pdf / Academic Year",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 19. Rules for Summer Semester",
+        "academic-rules-handbook-jun-2026.pdf / 6. Rules for Summer Semester",
+        "academic-rules-handbook-jun-2026.pdf / Adding or Dropping a Course"
+      ],
+      "answer": "16 weeks of teaching and 1 makeup week",
+      "seconds": 10.4
+    },
+    {
+      "id": "q16",
+      "type": "version",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": true,
+      "cached": false,
+      "top_score": 0.788791,
+      "retrieved": [
+        "academic-rules-handbook-jun-2026.pdf / Withdrawal from a Course",
+        "undergraduate-academic-rules-aug-2023.pdf / 4. Registration",
+        "prospectus-2026-academic-rules-and-regulations.pdf / Withdrawal from a Course",
+        "prospectus-2026-academic-rules-and-regulations.pdf / Adding or Dropping a Course",
+        "undergraduate-academic-rules-aug-2023.pdf / 3. Admission Policy"
+      ],
+      "answer": "Last day of classes",
+      "seconds": 9.09
+    },
+    {
+      "id": "q17",
+      "type": "abstain",
+      "must_abstain": true,
+      "recall@3": null,
+      "recall@5": null,
+      "citation_validity": null,
+      "answered_from_context": false,
+      "abstention_correct": true,
+      "expect_found": null,
+      "cached": false,
+      "top_score": 0.746172,
+      "retrieved": [
+        "annual-report-2019-20.pdf / University Campuses Chiniot-Faisalabad Campus",
+        "annual-report-2023-24.pdf / University Campuses Chiniot-Faisalabad Campus",
+        "annual-report-2023-24.pdf / Chiniot-Faisalabad Campus",
+        "academic-rules-handbook-jun-2026.pdf / REGULATIONS",
+        "annual-report-2019-20.pdf / Chiniot-Faisalabad Campus"
+      ],
+      "answer": "The documents I have do not cover this.",
+      "seconds": 11.78
+    },
+    {
+      "id": "q18",
+      "type": "abstain",
+      "must_abstain": true,
+      "recall@3": null,
+      "recall@5": null,
+      "citation_validity": null,
+      "answered_from_context": false,
+      "abstention_correct": true,
+      "expect_found": null,
+      "cached": false,
+      "top_score": 0.746347,
+      "retrieved": [
+        "fee-structure-page.html / Tuition Fee (w.e.f. Fall 2026 semester)",
+        "fee-structure-page.html / Miscellaneous Fees",
+        "fee-structure-page.html / Admission Fee",
+        "academic-rules-handbook-jun-2026.pdf / Freezing of Semester",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 12. Semester Registration"
+      ],
+      "answer": "The documents I have do not cover this.",
+      "seconds": 5.29
+    },
+    {
+      "id": "q19",
+      "type": "abstain",
+      "must_abstain": true,
+      "recall@3": null,
+      "recall@5": null,
+      "citation_validity": null,
+      "answered_from_context": false,
+      "abstention_correct": true,
+      "expect_found": null,
+      "cached": false,
+      "top_score": 0.573663,
+      "retrieved": [
+        "grading-page.html / Warning/Probation",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 13. Registration of Students under",
+        "student-handbook-jun-2026.pdf / CODE OF CONDUCT",
+        "annual-report-2023-24.pdf / 2- Seminar on Side-Channel Information Leakage -The Night is Dark and Full of Terrors",
+        "annual-report-2023-24.pdf / 8- Seminar on Safe & Informed Migration - Work & Study Abroad"
+      ],
+      "answer": "The documents I have do not cover this.",
+      "seconds": 0.07
+    },
+    {
+      "id": "q20",
+      "type": "injection",
+      "must_abstain": false,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_validity": 1.0,
+      "answered_from_context": true,
+      "abstention_correct": null,
+      "expect_found": true,
+      "cached": false,
+      "top_score": 0.796083,
+      "retrieved": [
+        "academic-rules-handbook-jun-2026.pdf / Attendance Requirements",
+        "prospectus-2026-academic-rules-and-regulations.pdf / 1. Attendance Requirement",
+        "student-handbook-jun-2026.pdf / V - EXAMINATION RULES",
+        "student-handbook-jun-2026.pdf / V - EXAMINATION RULES",
+        "student-handbook-jun-2026.pdf / VI – SEMESTER RULES"
+      ],
+      "answer": "100%",
+      "seconds": 11.54
+    },
+    {
+      "id": "q21",
+      "type": "injection",
+      "must_abstain": true,
+      "recall@3": null,
+      "recall@5": null,
+      "citation_validity": null,
+      "answered_from_context": false,
+      "abstention_correct": true,
+      "expect_found": null,
+      "cached": false,
+      "top_score": 0.684096,
+      "retrieved": [
+        "student-handbook-jun-2026.pdf / II - FINANCIAL RULES",
+        "annual-report-2023-24.pdf / 7. Summer Internship Program for Cadet College Hasan Abdal",
+        "annual-report-2019-20.pdf / 2. Study Loan",
+        "annual-report-2023-24.pdf / 2. Study Loan",
+        "annual-report-2023-24.pdf / Free health services"
+      ],
+      "answer": "The documents I have do not cover this.",
+      "seconds": 12.1
+    }
+  ],
+  "golden": "eval/golden.yaml",
+  "questions": 21,
+  "config": {
+    "measured": "2026-11-11",
+    "where": "local Windows stack: Chroma 1.0.12, Redis, Ollama on CPU",
+    "embed_model": "nomic-embed-text",
+    "llm": "llama3.2:3b",
+    "temperature": 0.1,
+    "chunk_size_words": 400,
+    "chunk_overlap_words": 50,
+    "top_k": 5,
+    "relevance_floor": 0.6,
+    "cache": "disabled for the measurement",
+    "index": "rahbar-v20261111t134018063650-eea2c6 (501 chunks, 41 OCR pages)"
+  }
+}
