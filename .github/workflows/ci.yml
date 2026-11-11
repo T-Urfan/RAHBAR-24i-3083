@@ -50,18 +50,41 @@ jobs:
           cache-dependency-path: |
             api/requirements-dev.txt
             indexer/requirements-dev.txt
-      - name: Tesseract (the indexer's OCR test runs it for real)
-        run: bash scripts/ci-install-tesseract.sh
+      # No system packages: Python dependencies only. The one test that needs the native
+      # Tesseract binary runs in the `ocr` job below; -rs lists it here as skipped.
       - run: pip install -r api/requirements-dev.txt -r indexer/requirements-dev.txt
       # stub provider and in-memory fakes only: no network, no model (section 6)
       - name: pytest api (coverage gate 60%)
-        run: cd api && pytest -q --cov=app --cov-report=term --cov-fail-under=60
-      - name: pytest indexer
-        env:
-          REQUIRE_TESSERACT: "1"   # the real-OCR test must run, never skip
+        run: cd api && pytest -q -rs --cov=app --cov-report=term --cov-fail-under=60
+      - name: pytest indexer (coverage gate 60%)
         run: cd indexer && pytest -q -rs --cov=pipeline --cov-report=term --cov-fail-under=60
       - name: pytest eval
-        run: pytest -q eval
+        run: pytest -q -rs eval
+
+  # The real OCR test, with the native Tesseract binary. Tesseract comes from conda-forge,
+  # not from the runner's Ubuntu apt mirrors (their DNS failed on our CI runs).
+  ocr:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mamba-org/setup-micromamba@v3.2.1
+        with:
+          environment-name: ocr
+          create-args: python=3.12 tesseract=5.5
+          init-shell: bash
+      - name: Tesseract is present, with English language data
+        run: |
+          tesseract --version | head -1
+          tesseract --list-langs | tee /tmp/langs.txt
+          grep -qx eng /tmp/langs.txt
+      - run: pip install -r indexer/requirements-dev.txt
+      - name: Real OCR of a scanned PDF (must run, never skip)
+        env:
+          REQUIRE_TESSERACT: "1"
+        run: cd indexer && pytest -v -rs tests/test_extract.py -k real_ocr
 
   manifests:
     runs-on: ubuntu-24.04
@@ -79,7 +102,7 @@ jobs:
           done
 
   build:
-    needs: [lint, test]
+    needs: [lint, test, ocr]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -106,6 +129,11 @@ jobs:
           tags: rahbar-indexer:ci
           push: false
           outputs: type=docker,dest=/tmp/rahbar-indexer.tar
+      - name: The indexer image has Tesseract with English data
+        run: |
+          docker load -i /tmp/rahbar-indexer.tar
+          docker run --rm --entrypoint tesseract rahbar-indexer:ci --version | head -1
+          docker run --rm --entrypoint tesseract rahbar-indexer:ci --list-langs | grep -qx eng
       - uses: actions/upload-artifact@v4
         with:
           name: images
@@ -124,7 +152,7 @@ jobs:
         with: {name: images, path: /tmp}
       - run: docker load -i /tmp/${{ matrix.image }}.tar
       # fail on HIGH or CRITICAL findings that have a fix available
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ matrix.image }}:ci
           severity: HIGH,CRITICAL

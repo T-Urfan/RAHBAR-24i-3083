@@ -32,21 +32,39 @@ jobs:
           cache-dependency-path: |
             api/requirements-dev.txt
             indexer/requirements-dev.txt
-      - run: bash scripts/ci-install-tesseract.sh
       - run: pip install -r api/requirements-dev.txt -r indexer/requirements-dev.txt
       - name: ruff and mypy
         run: |
           ruff check api indexer eval corpus
           (cd api && mypy app)
           (cd indexer && mypy pipeline)
-      - name: pytest
+      - name: pytest (the real-OCR test runs in the ocr job)
         run: |
-          (cd api && pytest -q --cov=app --cov-fail-under=60)
-          (cd indexer && REQUIRE_TESSERACT=1 pytest -q -rs)
-          pytest -q eval
+          (cd api && pytest -q -rs --cov=app --cov-fail-under=60)
+          (cd indexer && pytest -q -rs --cov=pipeline --cov-fail-under=60)
+          pytest -q -rs eval
+
+  # Same as ci.yml: Tesseract from conda-forge, the real scanned-PDF OCR test must run.
+  ocr:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mamba-org/setup-micromamba@v3.2.1
+        with:
+          environment-name: ocr
+          create-args: python=3.12 tesseract=5.5
+          init-shell: bash
+      - run: tesseract --list-langs | grep -qx eng
+      - run: pip install -r indexer/requirements-dev.txt
+      - env:
+          REQUIRE_TESSERACT: "1"
+        run: cd indexer && pytest -v -rs tests/test_extract.py -k real_ocr
 
   build-push:
-    needs: [test]
+    needs: [test, ocr]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
