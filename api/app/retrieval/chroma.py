@@ -28,6 +28,7 @@ from typing import Any
 
 from ..config import Settings
 from ..schemas import Passage
+from ..services.embedding import QueryEmbedder
 
 # Must match indexer/pipeline/store.py (checked by api/tests/test_index_contract.py).
 POINTER_SUFFIX = "-active"
@@ -100,8 +101,11 @@ class ChromaRetriever:
 
     def __init__(self, settings: Settings,
                  client_factory: Callable[[Settings], Any] = _http_client,
-                 clock: Callable[[], float] = time.monotonic) -> None:
+                 clock: Callable[[], float] = time.monotonic,
+                 embedder: Any | None = None) -> None:
         self.settings = settings
+        # Builds an httpx client but opens no connection.
+        self.embedder = embedder if embedder is not None else QueryEmbedder(settings)
         self._factory = client_factory
         self._clock = clock
         self._lock = threading.Lock()
@@ -146,6 +150,11 @@ class ChromaRetriever:
                 raise
             return client.get_collection(self._resolve_active(client, force=True))
 
+    def generation(self) -> str:
+        """The live collection's name: it changes on every re-index, so the semantic
+        cache keys on it (services/cache.py)."""
+        return self._resolve_active(self._get_client())
+
     # -- readiness --------------------------------------------------------------------
     def describe(self) -> IndexStatus:
         """Never raises: readiness turns the answer into 200 or 503."""
@@ -174,10 +183,32 @@ class ChromaRetriever:
                                      "run the indexer Job")
 
     # -- query ------------------------------------------------------------------------
-    def retrieve(self, question: str, k: int) -> list[Passage]:
-        # STARTER-TODO(3.2): embed the question with settings.embed_model (the same model
-        # the indexer used), query the collection for the top k, filter out superseded
-        # documents, and map each hit to a Passage. Chroma returns cosine *distance*;
-        # Passage.score expects similarity, so convert: similarity = 1 - distance.
-        # Plan: phase P6 (query via self.active_collection()).
-        raise NotImplementedError("ChromaRetriever.retrieve: see STARTER-TODO(3.2)")
+    def retrieve(self, question: str, k: int, *, include_superseded: bool = False,
+                 vector: list[float] | None = None) -> list[Passage]:
+        """Embed the question with the pinned model (unless the caller already did),
+        query the live collection for the top k by cosine distance, and exclude
+        superseded documents unless the question asks about an older version."""
+        if vector is None:
+            vector = self.embedder.embed(question)
+        where = None if include_superseded else {"superseded": False}
+        result = self.active_collection().query(
+            query_embeddings=[vector], n_results=k, where=where,
+            include=["documents", "metadatas", "distances"])
+        ids = (result.get("ids") or [[]])[0]
+        docs = (result.get("documents") or [[]])[0]
+        metas = (result.get("metadatas") or [[]])[0]
+        dists = (result.get("distances") or [[]])[0]
+        passages = []
+        for chunk_id, text, meta, distance in zip(ids, docs, metas, dists):
+            meta = meta or {}
+            page = meta.get("page")
+            passages.append(Passage(
+                chunk_id=str(chunk_id), text=str(text or ""),
+                source=str(meta.get("source", "")), section=str(meta.get("section", "")),
+                page=int(page) if isinstance(page, int | float) else None,
+                # the collection uses cosine distance (indexer/pipeline/store.py)
+                score=round(1.0 - float(distance), 6),
+                doc_version=str(meta["doc_version"]) if "doc_version" in meta else None,
+                superseded=bool(meta.get("superseded", False)),
+            ))
+        return passages

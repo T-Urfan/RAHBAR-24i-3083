@@ -78,3 +78,114 @@ class Clock:
 
     def __call__(self) -> float:
         return self.now
+
+
+class QueryableCollection(FakeCollection):
+    """A collection that answers query() from canned hits, recording each call."""
+
+    def __init__(self, name: str, hits: list[dict], metadata: dict | None = None) -> None:
+        super().__init__(name, metadata, rows=len(hits))
+        self.hits = hits
+        self.calls: list[dict] = []
+
+    def query(self, **kwargs: Any) -> dict:
+        self.calls.append(kwargs)
+        where = kwargs.get("where")
+        hits = [h for h in self.hits
+                if not where or all(h["meta"].get(k) == v for k, v in where.items())]
+        hits = hits[: kwargs["n_results"]]
+        return {"ids": [[h["id"] for h in hits]], "documents": [[h["text"] for h in hits]],
+                "metadatas": [[h["meta"] for h in hits]],
+                "distances": [[h["distance"] for h in hits]]}
+
+
+class FakeEmbedder:
+    def __init__(self, vector: list[float] | None = None, error: Exception | None = None):
+        self.vector = vector or [1.0, 0.0, 0.0]
+        self.error = error
+        self.calls: list[str] = []
+
+    def embed(self, question: str) -> list[float]:
+        self.calls.append(question)
+        if self.error:
+            raise self.error
+        return list(self.vector)
+
+
+class MemoryRedis:
+    """Just enough of redis-py for the semantic cache: strings, hashes, lists, TTLs
+    recorded (not enforced), scan, unlink and pipelines."""
+
+    def __init__(self) -> None:
+        self.data: dict[str, Any] = {}
+        self.ttl: dict[str, int] = {}
+        self.broken = False
+
+    def _check(self) -> None:
+        if self.broken:
+            raise ConnectionError("simulated: Redis down")
+
+    def ping(self) -> bool:
+        self._check()
+        return True
+
+    def get(self, key: str) -> Any:
+        self._check()
+        return self.data.get(key)
+
+    def set(self, key: str, value: Any) -> None:
+        self._check()
+        self.data[key] = value.encode() if isinstance(value, str) else value
+
+    def scan_iter(self, match: str = "*", count: int = 0) -> Any:
+        import fnmatch
+        self._check()
+        return [k.encode() for k in list(self.data) if fnmatch.fnmatch(k, match)]
+
+    def unlink(self, *keys: Any) -> int:
+        self._check()
+        n = 0
+        for k in keys:
+            n += self.data.pop(k.decode() if isinstance(k, bytes) else k, None) is not None
+        return n
+
+    def lrange(self, key: str, start: int, end: int) -> list[bytes]:
+        self._check()
+        return list(self.data.get(key, []))[start:end + 1]
+
+    def lpush(self, key: str, value: Any) -> None:
+        self.data.setdefault(key, []).insert(0, value.encode() if isinstance(value, str)
+                                             else value)
+
+    def ltrim(self, key: str, start: int, end: int) -> None:
+        self.data[key] = self.data.get(key, [])[start:end + 1]
+
+    def expire(self, key: str, seconds: int) -> None:
+        self.ttl[key] = seconds
+
+    def hset(self, key: str, mapping: dict) -> None:
+        self.data[key] = {k: (v.encode() if isinstance(v, str) else v)
+                          for k, v in mapping.items()}
+
+    def hmget(self, key: str, *fields: str) -> list[Any]:
+        row = self.data.get(key, {})
+        return [row.get(f) for f in fields]
+
+    def pipeline(self) -> MemoryPipeline:
+        self._check()
+        return MemoryPipeline(self)
+
+
+class MemoryPipeline:
+    def __init__(self, redis: MemoryRedis) -> None:
+        self.redis = redis
+        self.ops: list[Any] = []
+
+    def __getattr__(self, name: str) -> Any:
+        def queue(*args: Any, **kwargs: Any) -> None:
+            self.ops.append((name, args, kwargs))
+        return queue
+
+    def execute(self) -> list[Any]:
+        self.redis._check()
+        return [getattr(self.redis, n)(*a, **k) for n, a, k in self.ops]

@@ -46,6 +46,15 @@ def _float(name: str, default: float, low: float | None = None,
     return value
 
 
+def _bool(name: str, default: bool) -> bool:
+    raw = _str(name, "true" if default else "false").lower()
+    if raw in ("1", "true", "yes", "on"):
+        return True
+    if raw in ("0", "false", "no", "off"):
+        return False
+    raise ConfigError(f"{name}={raw!r} is not a boolean (true or false)")
+
+
 @dataclass(frozen=True)
 class Settings:
     # Which implementations to load. "stub" needs no cluster, no model, no network.
@@ -72,11 +81,24 @@ class Settings:
 
     # Retrieval and generation
     top_k: int = 5
+    # Cosine similarity (1 - distance) the best passage must reach before the model is
+    # asked at all; below it the API abstains. Chosen from measurements (PIPELINE.md).
+    relevance_floor: float = 0.55
     temperature: float = 0.2
     llm_model: str = "llama3.2:3b"
     ollama_url: str = "http://host.minikube.internal:11434"
     hosted_base_url: str = ""        # e.g. an OpenAI-compatible endpoint
     llm_api_key: str = field(default="", repr=False)   # from the Secret; never log it
+    llm_timeout_seconds: float = 120.0
+    llm_num_ctx: int = 4096          # Ollama context window: 5 chunks of ~520 tokens fit
+    llm_max_tokens: int = 512
+    embed_timeout_seconds: float = 30.0
+
+    # Semantic cache (Redis). A hit needs cosine similarity >= cache_threshold.
+    cache_enabled: bool = True
+    cache_threshold: float = 0.95
+    cache_ttl_seconds: int = 86400
+    cache_max_entries: int = 500
 
     log_level: str = "INFO"
 
@@ -94,10 +116,19 @@ def get_settings() -> Settings:
         redis_port=_int("REDIS_PORT", 6379, minimum=1),
         readiness_ttl_seconds=_float("READINESS_TTL_SECONDS", 5.0, low=0.0),
         top_k=_int("TOP_K", 5, minimum=1),
+        relevance_floor=_float("RELEVANCE_FLOOR", 0.55, low=-1.0, high=1.0),
         temperature=_float("TEMPERATURE", 0.2, low=0.0, high=2.0),
         llm_model=_str("LLM_MODEL", "llama3.2:3b"),
         ollama_url=_str("OLLAMA_URL", "http://host.minikube.internal:11434"),
         hosted_base_url=_str("HOSTED_BASE_URL", ""),
-        llm_api_key=os.environ.get("LLM_API_KEY", ""),
+        llm_api_key=os.environ.get("LLM_API_KEY", "").strip(),
+        llm_timeout_seconds=_float("LLM_TIMEOUT_SECONDS", 120.0, low=1.0, high=600.0),
+        llm_num_ctx=_int("LLM_NUM_CTX", 4096, minimum=512),
+        llm_max_tokens=_int("LLM_MAX_TOKENS", 512, minimum=16),
+        embed_timeout_seconds=_float("EMBED_TIMEOUT_SECONDS", 30.0, low=1.0, high=600.0),
+        cache_enabled=_bool("CACHE_ENABLED", True),
+        cache_threshold=_float("CACHE_THRESHOLD", 0.95, low=0.0, high=1.0),
+        cache_ttl_seconds=_int("CACHE_TTL_SECONDS", 86400, minimum=1),
+        cache_max_entries=_int("CACHE_MAX_ENTRIES", 500, minimum=1),
         log_level=_str("LOG_LEVEL", "INFO"),
     )

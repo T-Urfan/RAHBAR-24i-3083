@@ -1,5 +1,5 @@
-"""The contracts. Change them only with your partner's review: the UI, the
-evaluation script and your tests all depend on these shapes.
+"""The contracts. The UI, the evaluation script and the tests all depend on these
+shapes; changes are additive only (new optional fields), recorded in ADR 0003.
 
 `Answer` is what the model must produce (section 3.4). `AskResponse` is what
 the API returns to the UI and to eval/run_eval.py. The model's `reasoning` is
@@ -26,6 +26,8 @@ class Passage(BaseModel):
     section: str
     page: int | None = None
     score: float = Field(description="Similarity, higher is closer (1 - cosine distance).")
+    doc_version: str | None = None
+    superseded: bool = False
 
 
 class Citation(BaseModel):
@@ -52,6 +54,8 @@ class RetrievedRef(BaseModel):
     section: str
     page: int | None = None
     score: float
+    doc_version: str | None = None
+    superseded: bool = False
 
 
 class AskResponse(BaseModel):
@@ -62,3 +66,6 @@ class AskResponse(BaseModel):
     confidence: Literal["high", "medium", "low"]
     retrieved: list[RetrievedRef]
     provider: str
+    # Additive (ADR 0003): true when this answer came from the semantic cache. The UI
+    # shows a cache chip for it.
+    cached: bool = False
