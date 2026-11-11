@@ -123,7 +123,13 @@ jobs:
           rm kustomize
           kubectl kustomize . | grep -E "image: .*rahbar-(api|ui|indexer)" | sort -u
       - name: Deploy
-        run: kubectl apply -k k8s/overlays/ci
+        run: |
+          # the ingress-nginx admission webhook rejects the Ingress until it is listening
+          for attempt in $(seq 1 30); do
+            kubectl apply -k k8s/overlays/ci && exit 0
+            echo "attempt $attempt: admission webhook not ready yet"; sleep 5
+          done
+          exit 1
       - name: Wait for the rollout
         run: |
           kubectl -n rahbar rollout status statefulset/chroma --timeout=300s
