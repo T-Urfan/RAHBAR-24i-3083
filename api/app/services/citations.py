@@ -33,7 +33,7 @@ def check_citations(citations: list[Citation], passages: list[Passage]) -> Citat
     unique: dict[tuple[str, str, int | None], Citation] = {}
     invalid: list[Citation] = []
     for c in citations:
-        matches = by_key.get((_norm(c.source), _norm(c.section)))
+        matches = by_key.get((_norm(c.source), _norm(c.section))) or _by_content(c, passages)
         if not matches:
             invalid.append(c)
             continue
@@ -43,3 +43,21 @@ def check_citations(citations: list[Citation], passages: list[Passage]) -> Citat
                           Citation(source=chosen.source, section=chosen.section,
                                    page=chosen.page))
     return CitationCheck(list(unique.values()), invalid)
+
+
+def _by_content(citation: Citation, passages: list[Passage]) -> list[Passage]:
+    """Rules 2 and 3: the one passage of the cited source that holds the cited clause
+    number or the cited text. Ambiguous (two or more) or nothing means no match."""
+    source = _norm(citation.source)
+    named = _norm(citation.section)
+    if not named:
+        return []
+    same_source = [p for p in passages if _norm(p.source) == source]
+    by_clause = [p for p in same_source if named in p.clauses]
+    if len(by_clause) == 1:
+        return by_clause
+    if len(named) >= 8:
+        by_text = [p for p in same_source if named in _norm(p.text)]
+        if len(by_text) == 1:
+            return by_text
+    return []

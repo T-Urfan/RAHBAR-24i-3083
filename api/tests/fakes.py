@@ -91,8 +91,10 @@ class QueryableCollection(FakeCollection):
     def query(self, **kwargs: Any) -> dict:
         self.calls.append(kwargs)
         where = kwargs.get("where")
+        contains = (kwargs.get("where_document") or {}).get("$contains")
         hits = [h for h in self.hits
-                if not where or all(h["meta"].get(k) == v for k, v in where.items())]
+                if (not where or all(h["meta"].get(k) == v for k, v in where.items()))
+                and (contains is None or contains in h["text"])]
         hits = hits[: kwargs["n_results"]]
         return {"ids": [[h["id"] for h in hits]], "documents": [[h["text"] for h in hits]],
                 "metadatas": [[h["meta"] for h in hits]],

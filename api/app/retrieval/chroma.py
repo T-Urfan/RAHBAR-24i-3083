@@ -20,6 +20,7 @@ Three rules shape this file:
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 from collections.abc import Callable
@@ -187,29 +188,60 @@ class ChromaRetriever:
                  vector: list[float] | None = None) -> list[Passage]:
         """Embed the question with the pinned model (unless the caller already did),
         query the live collection for the top k by cosine distance, and exclude
-        superseded documents unless the question asks about an older version."""
+        superseded documents unless the question asks about an older version.
+
+        Hybrid step for exact terms: embeddings blur "clause 1.21" into "some clause
+        about rules" (recall@5 on exact-term questions was the lowest of any type), so
+        when the question names a clause, the chunks whose text contains that number are
+        fetched too (Chroma's where_document $contains) and ranked first."""
         if vector is None:
             vector = self.embedder.embed(question)
         where = None if include_superseded else {"superseded": False}
-        result = self.active_collection().query(
-            query_embeddings=[vector], n_results=k, where=where,
-            include=["documents", "metadatas", "distances"])
-        ids = (result.get("ids") or [[]])[0]
-        docs = (result.get("documents") or [[]])[0]
-        metas = (result.get("metadatas") or [[]])[0]
-        dists = (result.get("distances") or [[]])[0]
-        passages = []
-        for chunk_id, text, meta, distance in zip(ids, docs, metas, dists):
-            meta = meta or {}
-            page = meta.get("page")
-            passages.append(Passage(
-                chunk_id=str(chunk_id), text=str(text or ""),
-                source=str(meta.get("source", "")), section=str(meta.get("section", "")),
-                page=int(page) if isinstance(page, int | float) else None,
-                # the collection uses cosine distance (indexer/pipeline/store.py)
-                score=round(1.0 - float(distance), 6),
-                doc_version=str(meta["doc_version"]) if "doc_version" in meta else None,
-                superseded=bool(meta.get("superseded", False)),
-                clauses=[c for c in str(meta.get("clauses", "")).split(",") if c],
-            ))
-        return passages
+        collection = self.active_collection()
+        passages = _passages(collection.query(
+            query_embeddings=[vector], n_results=k, where=where, include=_INCLUDE))
+        exact: list[Passage] = []
+        for term in exact_terms(question):
+            exact += _passages(collection.query(
+                query_embeddings=[vector], n_results=EXACT_PER_TERM, where=where,
+                where_document={"$contains": f"{term} "}, include=_INCLUDE))
+        if not exact:
+            return passages
+        merged: dict[str, Passage] = {}
+        for passage in exact + passages:
+            merged.setdefault(passage.chunk_id, passage)
+        return list(merged.values())[:k]
+
+
+_INCLUDE = ["documents", "metadatas", "distances"]
+EXACT_PER_TERM = 2
+# "clause 1.21", "rule 4.18", "section 5.4": a number the user quotes on purpose. A bare
+# "2.00" (a CGPA) is not a clause reference and does not trigger the keyword step.
+_CLAUSE_REF = re.compile(r"\b(?:clause|rule|section|regulation|para(?:graph)?)s?\s+"
+                         r"(\d{1,2}\.\d{1,2})\b", re.I)
+
+
+def exact_terms(question: str) -> list[str]:
+    return list(dict.fromkeys(m.group(1) for m in _CLAUSE_REF.finditer(question)))
+
+
+def _passages(result: dict[str, Any]) -> list[Passage]:
+    ids = (result.get("ids") or [[]])[0]
+    docs = (result.get("documents") or [[]])[0]
+    metas = (result.get("metadatas") or [[]])[0]
+    dists = (result.get("distances") or [[]])[0]
+    passages = []
+    for chunk_id, text, meta, distance in zip(ids, docs, metas, dists):
+        meta = meta or {}
+        page = meta.get("page")
+        passages.append(Passage(
+            chunk_id=str(chunk_id), text=str(text or ""),
+            source=str(meta.get("source", "")), section=str(meta.get("section", "")),
+            page=int(page) if isinstance(page, int | float) else None,
+            # the collection uses cosine distance (indexer/pipeline/store.py)
+            score=round(1.0 - float(distance), 6),
+            doc_version=str(meta["doc_version"]) if "doc_version" in meta else None,
+            superseded=bool(meta.get("superseded", False)),
+            clauses=[c for c in str(meta.get("clauses", "")).split(",") if c],
+        ))
+    return passages
