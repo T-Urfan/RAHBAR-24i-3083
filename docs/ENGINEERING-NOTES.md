@@ -190,3 +190,13 @@ the wrong page. `extract_text()` looked right in spot checks. The truth came fro
 pdfplumber's word boxes: a whole second page of text sat outside the page's visible
 box, the facing printed page stored off-page, and `extract_text()` merges it line by line. Fixed by reading only objects
 inside the CropBox (`indexer/pipeline/extract.py`, `_visible_box`).
+
+**Third, in CI:** `chroma-0` sat in CrashLoopBackOff on the kind cluster while the api pods
+stayed `0/1 READY` (readiness doing its job). We first suspected the PVC permissions or the
+read-only root filesystem, since the pod runs as uid 1000. `kubectl describe` showed only
+"Back-off restarting failed container"; `kubectl logs --previous` told the truth:
+`Error loading config: invalid type: found string "tcp://10.96.225.247:8000", expected u16
+for key "PORT" in CHROMA_ environment variable(s)`. Kubernetes injects service-link variables
+for every Service (`CHROMA_PORT=tcp://...` for the Service named `chroma`), and Chroma 1.x
+reads every `CHROMA_*` variable as configuration. Fix: `enableServiceLinks: false` on every
+pod (`k8s/base/chroma.yaml` and the others).

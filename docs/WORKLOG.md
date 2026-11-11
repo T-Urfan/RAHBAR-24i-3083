@@ -154,3 +154,20 @@ cache threshold               near-miss pairs up to 0.930 -> ship 0.95
 failure stages A, B, C, E, F  see FAILURE-ANALYSIS.md
 api 139 passed (98%) · indexer 128 passed · eval 11 passed · kubeconform 30/30/33 valid
 ```
+
+## 2026-11-11 · CI/CD on GitHub *(AI-assisted)*
+
+Repository `T-Urfan/RAHBAR-24i-3083`; `dev` pushed; `main` created at the starter-kit commit
+and protected (PR, 1 approval, 9 required checks, no force-push).
+
+| CI problem | Cause (from the log) | Fix |
+| --- | --- | --- |
+| test job never reached pytest | runner DNS could not resolve any Ubuntu apt host | no apt in `test`; new `ocr` job gets Tesseract 5.5 from conda-forge and runs the real OCR test with `REQUIRE_TESSERACT=1` |
+| Trivy action not found | tag `0.28.0` no longer exists | `aquasecurity/trivy-action@v0.36.0` |
+| Trivy HIGH in api | starlette 0.46.2 via fastapi 0.115.12 | fastapi 0.162.4, starlette 1.10.0 |
+| Trivy HIGH in indexer | pypdf 5.4.0 (unused), pdfminer.six 20250327 via pdfplumber 0.11.6 | pypdf removed; pdfplumber 0.11.10 |
+| e2e: chroma-0 CrashLoopBackOff | `CHROMA_PORT=tcp://...` service-link variable read as Chroma config | `enableServiceLinks: false` on every pod |
+
+After the dependency upgrades: api 139 passed (98%), indexer 128 passed (96%, real OCR
+included), eval 11 passed; the real corpus re-extracted to the same 501 chunks, byte for
+byte, so `eval/results.json` still describes this code.
