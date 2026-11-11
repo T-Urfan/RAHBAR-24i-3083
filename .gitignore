@@ -11,6 +11,9 @@ kubeconfig
 # Corpus files you did not write: commit corpus/MANIFEST.md and corpus/fetch.py instead
 corpus/raw/
 
+# The assignment handout: the instructors' document, not ours to publish
+/Assignment*RAHBAR*.pdf
+
 # Python
 __pycache__/
 *.pyc
@@ -19,6 +22,10 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
 # Local scratch
 *.log
