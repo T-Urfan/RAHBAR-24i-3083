@@ -53,13 +53,18 @@ spec:
             periodSeconds: 20
             failureThreshold: 3
           resources:
-            requests: {cpu: 50m, memory: 128Mi}
-            limits: {cpu: "1", memory: 512Mi}
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
-              drop: [ALL]
+              drop:
+                - ALL
       volumes:
         - name: tmp
           emptyDir: {sizeLimit: 256Mi}
@@ -69,7 +74,8 @@ spec:
       spec:
         accessModes: [ReadWriteOnce]
         resources:
-          requests: {storage: 2Gi}
+          requests:
+            storage: 2Gi
 ---
 apiVersion: v1
 kind: Service

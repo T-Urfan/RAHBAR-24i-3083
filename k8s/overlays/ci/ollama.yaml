@@ -42,12 +42,18 @@ spec:
             httpGet: {path: /api/version, port: http}
             periodSeconds: 20
           resources:
-            requests: {cpu: 250m, memory: 512Mi}
-            limits: {cpu: "2", memory: 2Gi}
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
-            capabilities: {drop: [ALL]}
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - {name: models, mountPath: /models}
             - {name: tmp, mountPath: /tmp}

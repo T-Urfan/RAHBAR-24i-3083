@@ -32,12 +32,18 @@ patches:
             envFrom:
               - configMapRef: {name: rahbar-config}
             resources:
-              requests: {cpu: 10m, memory: 32Mi}
-              limits: {cpu: 200m, memory: 128Mi}
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                cpu: 200m
+                memory: 128Mi
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
-              capabilities: {drop: [ALL]}
+              capabilities:
+                drop:
+                  - ALL
       - op: replace
         path: /spec/template/spec/containers/0/env
         value:

@@ -14,7 +14,8 @@ metadata:
 spec:
   accessModes: [ReadWriteOnce]
   resources:
-    requests: {storage: 1Gi}
+    requests:
+      storage: 1Gi
 ---
 apiVersion: batch/v1
 kind: Job
@@ -47,13 +48,18 @@ spec:
           volumeMounts:
             - {name: corpus, mountPath: /corpus}
           resources:
-            requests: {cpu: 50m, memory: 64Mi}
-            limits: {cpu: 500m, memory: 256Mi}
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
-              drop: [ALL]
+              drop:
+                - ALL
       containers:
         - name: indexer
           image: rahbar-indexer:dev
@@ -68,13 +74,18 @@ spec:
             # Tesseract and pdfium write temporary page images here
             - {name: tmp, mountPath: /tmp}
           resources:
-            requests: {cpu: 500m, memory: 512Mi}
-            limits: {cpu: "2", memory: 1Gi}
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 1Gi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
-              drop: [ALL]
+              drop:
+                - ALL
       volumes:
         - name: corpus
           persistentVolumeClaim: {claimName: corpus}
@@ -121,13 +132,18 @@ spec:
               volumeMounts:
                 - {name: corpus, mountPath: /corpus}
               resources:
-                requests: {cpu: 50m, memory: 64Mi}
-                limits: {cpu: 500m, memory: 256Mi}
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
               securityContext:
                 allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true
                 capabilities:
-                  drop: [ALL]
+                  drop:
+                    - ALL
           containers:
             - name: indexer
               image: rahbar-indexer:dev
@@ -141,13 +157,18 @@ spec:
                 - {name: corpus, mountPath: /corpus, readOnly: true}
                 - {name: tmp, mountPath: /tmp}
               resources:
-                requests: {cpu: 500m, memory: 512Mi}
-                limits: {cpu: "2", memory: 1Gi}
+                requests:
+                  cpu: 500m
+                  memory: 512Mi
+                limits:
+                  cpu: "2"
+                  memory: 1Gi
               securityContext:
                 allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true
                 capabilities:
-                  drop: [ALL]
+                  drop:
+                    - ALL
           volumes:
             - name: corpus
               persistentVolumeClaim: {claimName: corpus}
