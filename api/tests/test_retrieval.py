@@ -19,7 +19,7 @@ HITS = [
               "doc_version": "2023-08", "superseded": True}},
     {"id": "new-1", "text": "CGPA 2.00 avoids warning.", "distance": 0.25,
      "meta": {"source": "rules-2026.pdf", "section": "5.4 Warning", "page": 24,
-              "doc_version": "2026-06", "superseded": False}},
+              "doc_version": "2026-06", "superseded": False, "clauses": "5.4,5.5"}},
     {"id": "new-2", "text": "Probation follows.", "distance": 0.40,
      "meta": {"source": "rules-2026.pdf", "section": "5.5 Probation", "page": 25,
               "doc_version": "2026-06", "superseded": False}},
@@ -45,6 +45,7 @@ def test_retrieve_excludes_superseded_and_converts_distance_to_similarity() -> N
     assert passages[0].score == pytest.approx(0.75)
     assert passages[0].page == 24 and passages[0].section == "5.4 Warning"
     assert passages[0].doc_version == "2026-06" and passages[0].superseded is False
+    assert passages[0].clauses == ["5.4", "5.5"] and passages[1].clauses == []
     assert embedder.calls == ["What CGPA avoids warning?"]
 
 

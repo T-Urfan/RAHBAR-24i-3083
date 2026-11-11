@@ -28,6 +28,7 @@ class Passage(BaseModel):
     score: float = Field(description="Similarity, higher is closer (1 - cosine distance).")
     doc_version: str | None = None
     superseded: bool = False
+    clauses: list[str] = Field(default_factory=list)
 
 
 class Citation(BaseModel):
@@ -56,6 +57,9 @@ class RetrievedRef(BaseModel):
     score: float
     doc_version: str | None = None
     superseded: bool = False
+    # clause numbers the chunk contains ("5.4"), so a golden passage named by clause
+    # can be matched (docs/PIPELINE.md, "Evaluation method")
+    clauses: list[str] = Field(default_factory=list)
 
 
 class AskResponse(BaseModel):

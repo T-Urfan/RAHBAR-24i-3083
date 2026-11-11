@@ -64,7 +64,8 @@ class _Trace:
 
 def _refs(passages: list[Passage]) -> list[RetrievedRef]:
     return [RetrievedRef(chunk_id=p.chunk_id, source=p.source, section=p.section, page=p.page,
-                         score=p.score, doc_version=p.doc_version, superseded=p.superseded)
+                         score=p.score, doc_version=p.doc_version, superseded=p.superseded,
+                         clauses=p.clauses)
             for p in passages]
 
 

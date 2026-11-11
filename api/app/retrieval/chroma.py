@@ -210,5 +210,6 @@ class ChromaRetriever:
                 score=round(1.0 - float(distance), 6),
                 doc_version=str(meta["doc_version"]) if "doc_version" in meta else None,
                 superseded=bool(meta.get("superseded", False)),
+                clauses=[c for c in str(meta.get("clauses", "")).split(",") if c],
             ))
         return passages
