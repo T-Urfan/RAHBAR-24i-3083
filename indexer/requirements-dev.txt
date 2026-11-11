@@ -1,5 +1,7 @@
 -r requirements.txt
 pytest==8.3.5
 pytest-cov==6.1.1
+# builds small PDFs (text, columns, ruled tables) for the extraction tests
+fpdf2==2.8.3
 ruff==0.11.8
 mypy==1.15.0
