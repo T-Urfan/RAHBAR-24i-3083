@@ -204,6 +204,12 @@ jobs:
           kubectl -n rahbar rollout status statefulset/chroma --timeout=300s || diagnose chroma
           kubectl -n rahbar rollout status deployment/redis --timeout=180s || diagnose redis
           kubectl -n rahbar rollout status deployment/ollama --timeout=300s || diagnose ollama
+      - name: Pull the embedding model, then start the indexer Job fresh
+        run: |
+          kubectl -n rahbar exec deploy/ollama -- ollama pull nomic-embed-text
+          # the Job was created with the other manifests, possibly before Ollama was up
+          kubectl -n rahbar delete job indexer --ignore-not-found --wait=true
+          kubectl apply -k k8s/overlays/ci
       - name: Run the indexer Job on the fixture corpus
         run: |
           kubectl -n rahbar wait --for=condition=complete job/indexer --timeout=900s || {

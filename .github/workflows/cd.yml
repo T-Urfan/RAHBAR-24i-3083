@@ -129,6 +129,9 @@ jobs:
           kubectl -n rahbar rollout status statefulset/chroma --timeout=300s
           kubectl -n rahbar rollout status deployment/redis --timeout=180s
           kubectl -n rahbar rollout status deployment/ollama --timeout=300s
+          kubectl -n rahbar exec deploy/ollama -- ollama pull nomic-embed-text
+          kubectl -n rahbar delete job indexer --ignore-not-found --wait=true
+          kubectl apply -k k8s/overlays/ci
           kubectl -n rahbar wait --for=condition=complete job/indexer --timeout=900s
           kubectl -n rahbar rollout status deployment/api --timeout=300s
           kubectl -n rahbar rollout status deployment/ui --timeout=120s

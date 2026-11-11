@@ -28,7 +28,24 @@ patches:
           - name: pull-embedding-model
             image: docker.io/taahaurfan/rahbar-indexer
             imagePullPolicy: IfNotPresent
-            command: ["python", "-c", "import httpx,os; r=httpx.post('http://ollama:11434/api/pull', json={'model': os.environ['EMBED_MODEL'], 'stream': False}, timeout=900); r.raise_for_status(); print(r.text)"]
+            # Ollama may still be starting when the Job is created: retry for ~10 minutes.
+            command:
+              - python
+              - -c
+              - |
+                import os, sys, time, httpx
+                model = os.environ["EMBED_MODEL"]
+                for attempt in range(60):
+                    try:
+                        r = httpx.post("http://ollama:11434/api/pull",
+                                       json={"model": model, "stream": False}, timeout=900)
+                        r.raise_for_status()
+                        print("pulled", model, r.text)
+                        sys.exit(0)
+                    except Exception as exc:
+                        print(f"attempt {attempt + 1}: ollama not ready ({exc})", flush=True)
+                        time.sleep(10)
+                sys.exit("ollama never became reachable")
             envFrom:
               - configMapRef: {name: rahbar-config}
             resources:
