@@ -6,6 +6,5 @@ httpx==0.28.1
 pyyaml==6.0.2
 # Extraction. pdfplumber renders pages for OCR through pypdfium2 (its own dependency),
 # so poppler/pdf2image are not needed. OCR needs one system package: tesseract-ocr.
-pdfplumber==0.11.6
-pypdf==5.4.0
+pdfplumber==0.11.10
 pytesseract==0.3.13

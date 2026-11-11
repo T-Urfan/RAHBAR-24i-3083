@@ -1,5 +1,7 @@
 # Pinned: an unpinned dependency is the drift problem from Lecture 04.
-fastapi==0.115.12
+fastapi==0.162.4
+# explicit: fastapi allows starlette>=0.46, and 0.46.x has HIGH CVEs fixed in 1.x (Trivy)
+starlette==1.10.0
 uvicorn==0.34.2
 pydantic==2.11.4
 httpx==0.28.1
