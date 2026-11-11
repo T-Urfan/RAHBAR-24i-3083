@@ -1,11 +1,10 @@
-# kind cluster in GitHub Actions, ci.yml e2e-eval job, https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43073251211 (commit 64dccb3)
-# fixture corpus indexed by the indexer Job; api 3/3 ready
+# kind cluster in GitHub Actions, ci.yml e2e-eval job, https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43074625488 (green run)
 POD                       NAME     CPU(cores)   MEMORY(bytes)   
-api-7f46d87c59-77x2j      api      2m           72Mi            
-api-7f46d87c59-ngrxr      api      2m           72Mi            
-api-7f46d87c59-rfc5m      api      2m           72Mi            
-chroma-0                  chroma   2m           18Mi            
-ollama-69f788b454-ptfws   ollama   1m           403Mi           
-redis-85976948f-pj8p6     redis    4m           3Mi             
-ui-584d87c6d5-gq264       ui       1m           2Mi             
-ui-584d87c6d5-vqr47       ui       1m           2Mi             
+api-7f46d87c59-2gjqf      api      2m           72Mi            
+api-7f46d87c59-762rg      api      2m           72Mi            
+api-7f46d87c59-t86v2      api      2m           72Mi            
+chroma-0                  chroma   1m           20Mi            
+ollama-69f788b454-kd5d2   ollama   1m           403Mi           
+redis-85976948f-npvg8     redis    5m           3Mi             
+ui-584d87c6d5-bfxqs       ui       1m           2Mi             
+ui-584d87c6d5-hqzk5       ui       1m           2Mi             
