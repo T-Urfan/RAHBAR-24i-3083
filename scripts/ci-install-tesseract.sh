@@ -8,15 +8,22 @@ if command -v tesseract >/dev/null 2>&1; then
   exit 0
 fi
 
-# The package host the runner's apt sources use (Azure mirror on GitHub runners).
-HOSTS=$(grep -rhoE 'https?://[^/ ]+' /etc/apt/sources.list /etc/apt/sources.list.d/ \
-          /etc/apt/apt-mirrors.txt 2>/dev/null | sed -E 's#https?://##' | sort -u || true)
+# Hosts apt really uses: active (non-comment) entries of the sources and of the runner's
+# mirror list (azure.archive.ubuntu.com first, archive.ubuntu.com as its fallback).
+HOSTS=$(cat /etc/apt/sources.list /etc/apt/sources.list.d/* /etc/apt/apt-mirrors.txt \
+          2>/dev/null | grep -v '^\s*#' | grep -oE 'https?://[^/ ]+' \
+          | sed -E 's#https?://##' | sort -u || true)
 HOSTS=${HOSTS:-archive.ubuntu.com}
 
+# OK when at least one mirror resolves; apt-get update --error-on=any below still fails
+# if any index cannot actually be downloaded.
 dns_ok() {
+  local ok=1
   for host in $HOSTS; do
-    getent hosts "$host" >/dev/null || { echo "  cannot resolve $host"; return 1; }
+    if getent hosts "$host" >/dev/null; then echo "  resolves: $host"; ok=0
+    else echo "  cannot resolve: $host"; fi
   done
+  return $ok
 }
 
 for attempt in 1 2 3 4 5; do
@@ -24,7 +31,7 @@ for attempt in 1 2 3 4 5; do
     break
   fi
   if [ "$attempt" -eq 5 ]; then
-    echo "::error::DNS resolution of the apt hosts ($HOSTS) still fails after 5 attempts; the runner has no package-repository access. Re-run the job."
+    echo "::error::no apt host resolves after 5 attempts ($(echo $HOSTS)); the runner has no package-repository access. Re-run the job."
     exit 1
   fi
   echo "DNS attempt $attempt failed; retrying in $((attempt * 10)) s"
