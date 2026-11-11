@@ -1,0 +1,35 @@
+# One ConfigMap read by BOTH the api and the indexer (envFrom), so EMBED_MODEL is one key
+# with one value: the pin (section 4.4). Values are chosen by measurement; see
+# docs/PIPELINE.md for each one.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rahbar-config
+  namespace: rahbar
+data:
+  # the pin: indexer writes it into the collection, api refuses to be ready if it differs
+  EMBED_MODEL: nomic-embed-text
+  RETRIEVER: chroma
+  LLM_PROVIDER: ollama-host
+  LLM_MODEL: llama3.2:3b
+  # Ollama on the laptop (section 9: it must listen on 0.0.0.0)
+  OLLAMA_URL: http://host.minikube.internal:11434
+  CHROMA_HOST: chroma
+  CHROMA_PORT: "8000"
+  CHROMA_COLLECTION: rahbar
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  # retrieval: k and the floor below which the api abstains without asking the model
+  TOP_K: "5"
+  RELEVANCE_FLOOR: "0.55"
+  # semantic cache: lowest threshold with zero false hits on our test pairs
+  CACHE_THRESHOLD: "0.95"
+  # 0.1: facts and JSON want near-determinism; 0 is not needed for schema-valid output
+  TEMPERATURE: "0.1"
+  LLM_TIMEOUT_SECONDS: "150"
+  LLM_NUM_CTX: "4096"
+  # indexer: words, measured on three settings (PIPELINE.md, "Chunking")
+  CHUNK_SIZE: "400"
+  CHUNK_OVERLAP: "50"
+  OCR_ENABLED: "true"
+  LOG_LEVEL: INFO

@@ -1,0 +1,84 @@
+# Chroma: a StatefulSet, not a Deployment (docs/ARCHITECTURE.md). It owns state on disk, so
+# it needs a stable identity (chroma-0) bound to its own PVC through volumeClaimTemplates.
+# A Deployment's rolling update would start a second pod against the same ReadWriteOnce
+# volume, and a deleted pod could come back without its data.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: chroma
+  namespace: rahbar
+  labels: {app.kubernetes.io/name: chroma, app.kubernetes.io/part-of: rahbar}
+spec:
+  serviceName: chroma
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: chroma}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: chroma, app.kubernetes.io/part-of: rahbar}
+    spec:
+      serviceAccountName: chroma
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: chroma
+          # pinned to the same version as chromadb-client in api/ and indexer/
+          image: chromadb/chroma:1.0.12
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8000}
+          env:
+            - {name: IS_PERSISTENT, value: "TRUE"}
+            - {name: PERSIST_DIRECTORY, value: /data}
+            - {name: ANONYMIZED_TELEMETRY, value: "FALSE"}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+            - {name: tmp, mountPath: /tmp}
+          startupProbe:
+            httpGet: {path: /api/v2/heartbeat, port: http}
+            periodSeconds: 2
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /api/v2/heartbeat, port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 256Mi}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests: {storage: 2Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chroma
+  namespace: rahbar
+  labels: {app.kubernetes.io/name: chroma, app.kubernetes.io/part-of: rahbar}
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/name: chroma}
+  ports:
+    - {name: http, port: 8000, targetPort: http}

@@ -1,0 +1,153 @@
+# Deny by default, then allow only the paths the architecture needs (section 4.7):
+#   ui     <- ingress controller
+#   api    <- ingress controller, ui
+#   chroma <- api, indexer            (the ui can NOT reach chroma)
+#   redis  <- api                     (the indexer invalidates the cache through the
+#                                      pointer, so it never needs Redis)
+# Egress: DNS for everyone; api -> chroma, redis, Ollama; indexer -> chroma, Ollama, and
+# HTTPS/HTTP out for the corpus fetch. Needs a CNI that enforces policy: minikube is
+# started with --cni=calico (the default plugin accepts these and ignores them).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: rahbar
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: rahbar
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {k8s-app: kube-dns}
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ui-ingress
+  namespace: rahbar
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: ui}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: ingress-nginx}
+      ports:
+        - {protocol: TCP, port: 8080}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-ingress
+  namespace: rahbar
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: api}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: ingress-nginx}
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: ui}
+      ports:
+        - {protocol: TCP, port: 8000}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-egress
+  namespace: rahbar
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: api}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: chroma}
+      ports:
+        - {protocol: TCP, port: 8000}
+    - to:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: redis}
+      ports:
+        - {protocol: TCP, port: 6379}
+    # Ollama on the host (host.minikube.internal). Only this port leaves the cluster;
+    # the overlay can narrow the address to the host IP from
+    #   minikube ssh "grep host.minikube.internal /etc/hosts"
+    - to:
+        - ipBlock: {cidr: 0.0.0.0/0}
+      ports:
+        - {protocol: TCP, port: 11434}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: chroma-ingress
+  namespace: rahbar
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: chroma}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: api}
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: indexer}
+      ports:
+        - {protocol: TCP, port: 8000}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-ingress
+  namespace: rahbar
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: redis}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: api}
+      ports:
+        - {protocol: TCP, port: 6379}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: indexer-egress
+  namespace: rahbar
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: indexer}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: chroma}
+      ports:
+        - {protocol: TCP, port: 8000}
+    - to:
+        - ipBlock: {cidr: 0.0.0.0/0}
+      ports:
+        - {protocol: TCP, port: 11434}   # Ollama embeddings
+        - {protocol: TCP, port: 443}     # corpus fetch (nu.edu.pk)
+        - {protocol: TCP, port: 80}
