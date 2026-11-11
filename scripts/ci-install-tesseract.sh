@@ -1,19 +1,51 @@
 #!/usr/bin/env bash
-# Install Tesseract on a GitHub runner. The runner's Azure apt mirror sometimes fails DNS
-# (our first two CI runs), so retry, then fall back to the main Ubuntu archive.
-set -u
-for attempt in 1 2 3; do
-  if sudo apt-get -o Acquire::Retries=3 update -q && \
-     sudo apt-get -o Acquire::Retries=3 install -y -q --no-install-recommends tesseract-ocr; then
-    tesseract --version | head -1
-    exit 0
+# Install Tesseract on a GitHub Actions Ubuntu runner, or stop with a clear diagnostic.
+# Never continues with stale or partial package indexes: the real-OCR test must run.
+set -euo pipefail
+
+if command -v tesseract >/dev/null 2>&1; then
+  echo "tesseract already installed: $(tesseract --version 2>&1 | head -1)"
+  exit 0
+fi
+
+# The package host the runner's apt sources use (Azure mirror on GitHub runners).
+HOSTS=$(grep -rhoE 'https?://[^/ ]+' /etc/apt/sources.list /etc/apt/sources.list.d/ \
+          /etc/apt/apt-mirrors.txt 2>/dev/null | sed -E 's#https?://##' | sort -u || true)
+HOSTS=${HOSTS:-archive.ubuntu.com}
+
+dns_ok() {
+  for host in $HOSTS; do
+    getent hosts "$host" >/dev/null || { echo "  cannot resolve $host"; return 1; }
+  done
+}
+
+for attempt in 1 2 3 4 5; do
+  if dns_ok; then
+    break
   fi
-  echo "attempt $attempt failed; switching to archive.ubuntu.com"
-  sudo sed -i 's|mirror+file:/etc/apt/apt-mirrors.txt|http://archive.ubuntu.com/ubuntu/|g' \
-    /etc/apt/sources.list.d/*.sources /etc/apt/sources.list 2>/dev/null || true
-  sleep 10
+  if [ "$attempt" -eq 5 ]; then
+    echo "::error::DNS resolution of the apt hosts ($HOSTS) still fails after 5 attempts; the runner has no package-repository access. Re-run the job."
+    exit 1
+  fi
+  echo "DNS attempt $attempt failed; retrying in $((attempt * 10)) s"
+  sleep $((attempt * 10))
 done
-# Do not fail the job on a package-mirror outage: only one test needs Tesseract, and it
-# skips itself (with a reason in the pytest summary) when the binary is missing.
-echo "::warning::tesseract-ocr could not be installed; the real-OCR test will be skipped"
-exit 0
+
+# --error-on=any: any index that fails to download is an error, so apt never installs
+# from stale or missing indexes.
+for attempt in 1 2 3; do
+  if timeout 180 sudo apt-get update -q --error-on=any \
+       -o Acquire::Retries=3 -o Acquire::http::Timeout=30; then
+    break
+  fi
+  if [ "$attempt" -eq 3 ]; then
+    echo "::error::apt-get update failed 3 times; package indexes are incomplete, not installing."
+    exit 1
+  fi
+  echo "apt-get update attempt $attempt failed; retrying in 15 s"
+  sleep 15
+done
+
+timeout 300 sudo apt-get install -y -q --no-install-recommends \
+  -o Acquire::Retries=3 tesseract-ocr tesseract-ocr-eng
+tesseract --version 2>&1 | head -1

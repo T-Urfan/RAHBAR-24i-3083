@@ -155,7 +155,9 @@ def _tesseract() -> str | None:
     return shutil.which("tesseract")
 
 
-@pytest.mark.skipif(_tesseract() is None, reason="tesseract binary not installed")
+# CI sets REQUIRE_TESSERACT=1: there a missing binary fails this test instead of skipping it.
+@pytest.mark.skipif(_tesseract() is None and os.environ.get("REQUIRE_TESSERACT") != "1",
+                    reason="tesseract binary not installed")
 def test_real_ocr_reads_the_scanned_page(tmp_path: Path) -> None:
     doc = extract(str(pdfgen.scanned_pdf(tmp_path / "s.pdf")), "2023-08", True,
                   _settings(tesseract_cmd=_tesseract() or ""))

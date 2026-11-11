@@ -42,7 +42,7 @@ jobs:
       - name: pytest
         run: |
           (cd api && pytest -q --cov=app --cov-fail-under=60)
-          (cd indexer && pytest -q)
+          (cd indexer && REQUIRE_TESSERACT=1 pytest -q -rs)
           pytest -q eval
 
   build-push:

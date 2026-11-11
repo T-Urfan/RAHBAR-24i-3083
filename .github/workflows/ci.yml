@@ -57,7 +57,9 @@ jobs:
       - name: pytest api (coverage gate 60%)
         run: cd api && pytest -q --cov=app --cov-report=term --cov-fail-under=60
       - name: pytest indexer
-        run: cd indexer && pytest -q --cov=pipeline --cov-report=term --cov-fail-under=60
+        env:
+          REQUIRE_TESSERACT: "1"   # the real-OCR test must run, never skip
+        run: cd indexer && pytest -q -rs --cov=pipeline --cov-report=term --cov-fail-under=60
       - name: pytest eval
         run: pytest -q eval
 
