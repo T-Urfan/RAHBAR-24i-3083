@@ -51,7 +51,7 @@ jobs:
             api/requirements-dev.txt
             indexer/requirements-dev.txt
       - name: Tesseract (the indexer's OCR test runs it for real)
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr
+        run: bash scripts/ci-install-tesseract.sh
       - run: pip install -r api/requirements-dev.txt -r indexer/requirements-dev.txt
       # stub provider and in-memory fakes only: no network, no model (section 6)
       - name: pytest api (coverage gate 60%)
