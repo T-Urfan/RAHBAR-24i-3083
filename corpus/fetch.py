@@ -5,6 +5,8 @@
     python corpus/fetch.py --force               # download everything again
     python corpus/fetch.py --verify              # re-hash local files against MANIFEST.md
     python corpus/fetch.py --list URL            # list the documents linked from an index page
+    python corpus/fetch.py --dest /corpus        # download into another folder (the indexer
+                                                 # Job's volume); the manifest goes there too
 
 Writes:
     corpus/raw/<file>         the documents (gitignored: never commit someone else's PDFs)
@@ -94,7 +96,7 @@ def load_sources() -> list[dict]:
 
 def fetch(force: bool) -> int:
     docs = load_sources()
-    RAW.mkdir(exist_ok=True)
+    RAW.mkdir(parents=True, exist_ok=True)
     index_path = RAW / "_index.json"
     previous = {e["name"]: e for e in json.loads(index_path.read_text())} \
         if index_path.exists() else {}
@@ -229,7 +231,14 @@ def main() -> int:
     group.add_argument("--force", action="store_true", help="download everything again")
     group.add_argument("--verify", action="store_true", help="check local files against MANIFEST.md")
     group.add_argument("--list", metavar="URL", help="list document links on an index page")
+    parser.add_argument("--dest", type=Path,
+                        help="download into this folder instead of corpus/raw, and write the "
+                             "manifest there (the container's own files are read-only)")
     args = parser.parse_args()
+    if args.dest:
+        global RAW, MANIFEST
+        RAW = args.dest
+        MANIFEST = args.dest / "MANIFEST.md"
     if args.verify:
         return verify()
     if args.list:

@@ -1,0 +1,12 @@
+# Used when the build context is indexer/ itself. The documented build uses the repo root
+# with indexer/Dockerfile.dockerignore, which excludes the same things.
+.git
+__pycache__
+*.pyc
+.venv
+venv
+.pytest_cache
+.mypy_cache
+.coverage
+tests
+corpus
