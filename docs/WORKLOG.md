@@ -126,3 +126,31 @@ api       43 passed                                                   coverage 9
 ruff     All checks passed!     mypy: no issues (api 23 files, indexer 11 files)
 corpus   469 chunks · 57,427 source words · amplification 1.024 · peak memory 119 MB
 ```
+
+## 2026-11-11 · P2-P13 · Query pipeline, cache, evaluation, images, Kubernetes, CI/CD *(AI-assisted)*
+
+**Environment:** Ollama 0.40.16 (CPU: the GTX 1050 Ti driver is too old for its CUDA build,
+so `CUDA_VISIBLE_DEVICES=-1`), Tesseract 5.4, minikube, gh, kubeconform, a Chroma 1.0.12
+server and Redis, all under `E:\tools`. **Docker Desktop and minikube cannot run here:** this
+is Windows build 21996 (pre-release) and current WSL fails to create any VM
+(`HCS_E_INVALID_JSON`, reproduced with `wsl --import`). The real corpus was indexed and
+evaluated against native processes; the cluster runs on kind in GitHub Actions.
+
+**Files:** `api/app/services/{embedding,versioning,prompt,citations,cache,answer}.py`,
+`api/app/providers/llm/{base,ollama,hosted,stub}.py`, `api/app/retrieval/chroma.py`,
+`api/app/routes/{ask,metrics}.py`, `eval/run_eval.py`, `eval/golden.yaml`,
+`eval/abstention_probes.yaml`, `eval/{baseline,results}.json`, `eval/fixtures/baseline.json`,
+three Dockerfiles, `k8s/base/*`, `k8s/overlays/{dev,prod,ci}`, `.github/workflows/{ci,cd}.yml`,
+all docs.
+
+**Runs (each recorded in PIPELINE.md and FAILURE-ANALYSIS.md):**
+
+```text
+index, full corpus, OCR       501 chunks, 41 OCR pages, 208 s, peak 215 MB
+retrieval only, 400/50        recall@5 0.912 (v1) -> 0.971 (clause lookup)
+chunking 200/30, 400/50, 600/80   recall@5 1.000 / 0.971 / 0.971; probes 8/10 vs 10/10 -> ship 400/50
+full eval v1 -> v3            fallbacks 4 -> 0; abstention 75% -> 100%; probes 10/10
+cache threshold               near-miss pairs up to 0.930 -> ship 0.95
+failure stages A, B, C, E, F  see FAILURE-ANALYSIS.md
+api 139 passed (98%) · indexer 128 passed · eval 11 passed · kubeconform 30/30/33 valid
+```
