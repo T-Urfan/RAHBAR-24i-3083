@@ -1,0 +1,208 @@
+# CI: every pull request to main and every push to dev (section 6).
+# lint + test -> build -> scan, and build -> e2e-eval on a real (kind) cluster with the
+# section 5.4 gate. Nothing in this workflow publishes anything.
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            api/requirements-dev.txt
+            indexer/requirements-dev.txt
+      - run: pip install -r api/requirements-dev.txt -r indexer/requirements-dev.txt
+      - name: ruff
+        run: ruff check api indexer eval corpus
+      - name: mypy
+        run: |
+          (cd api && mypy app)
+          (cd indexer && mypy pipeline)
+
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            api/requirements-dev.txt
+            indexer/requirements-dev.txt
+      - name: Tesseract (the indexer's OCR test runs it for real)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr
+      - run: pip install -r api/requirements-dev.txt -r indexer/requirements-dev.txt
+      # stub provider and in-memory fakes only: no network, no model (section 6)
+      - name: pytest api (coverage gate 60%)
+        run: cd api && pytest -q --cov=app --cov-report=term --cov-fail-under=60
+      - name: pytest indexer
+        run: cd indexer && pytest -q --cov=pipeline --cov-report=term --cov-fail-under=60
+      - name: pytest eval
+        run: pytest -q eval
+
+  manifests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kubeconform
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
+            | sudo tar -xz -C /usr/local/bin kubeconform
+      - name: kustomize build | kubeconform -strict
+        run: |
+          for overlay in prod dev ci; do
+            echo "== $overlay"
+            kubectl kustomize "k8s/overlays/$overlay" | kubeconform -strict -summary
+          done
+
+  build:
+    needs: [lint, test]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build api
+        uses: docker/build-push-action@v6
+        with:
+          context: api
+          tags: rahbar-api:ci
+          push: false
+          outputs: type=docker,dest=/tmp/rahbar-api.tar
+      - name: Build ui
+        uses: docker/build-push-action@v6
+        with:
+          context: ui
+          tags: rahbar-ui:ci
+          push: false
+          outputs: type=docker,dest=/tmp/rahbar-ui.tar
+      - name: Build indexer
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: indexer/Dockerfile
+          tags: rahbar-indexer:ci
+          push: false
+          outputs: type=docker,dest=/tmp/rahbar-indexer.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: images
+          path: /tmp/rahbar-*.tar
+          retention-days: 1
+
+  scan:
+    needs: [build]
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [rahbar-api, rahbar-ui, rahbar-indexer]
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {name: images, path: /tmp}
+      - run: docker load -i /tmp/${{ matrix.image }}.tar
+      # fail on HIGH or CRITICAL findings that have a fix available
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ matrix.image }}:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+
+  e2e-eval:
+    needs: [build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install httpx==0.28.1 pyyaml==6.0.2
+      - uses: actions/download-artifact@v4
+        with: {name: images, path: /tmp}
+      - name: Create a kind cluster
+        uses: helm/kind-action@v1.10.0
+        with:
+          cluster_name: rahbar
+          config: .github/kind-config.yaml
+      - name: Ingress controller and metrics-server
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.0/deploy/static/provider/kind/deploy.yaml
+          kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.7.2/components.yaml
+          kubectl -n kube-system patch deployment metrics-server --type=json \
+            -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+          kubectl -n ingress-nginx wait --for=condition=available deployment/ingress-nginx-controller --timeout=240s
+      - name: Load the images built by this run
+        run: |
+          for image in rahbar-api rahbar-ui rahbar-indexer; do
+            docker load -i /tmp/$image.tar
+            kind load docker-image $image:ci --name rahbar
+          done
+      - name: Apply the manifests
+        run: kubectl apply -k k8s/overlays/ci
+      - name: Wait for the data tier
+        run: |
+          kubectl -n rahbar rollout status statefulset/chroma --timeout=300s
+          kubectl -n rahbar rollout status deployment/redis --timeout=180s
+          kubectl -n rahbar rollout status deployment/ollama --timeout=300s
+      - name: Run the indexer Job on the fixture corpus
+        run: |
+          kubectl -n rahbar wait --for=condition=complete job/indexer --timeout=900s || {
+            kubectl -n rahbar describe job/indexer
+            kubectl -n rahbar logs job/indexer --all-containers
+            exit 1
+          }
+          kubectl -n rahbar logs job/indexer -c indexer | tail -5
+      - name: Wait for the api rollout (readiness needs a non-empty index)
+        run: kubectl -n rahbar rollout status deployment/api --timeout=300s
+      - name: Smoke test through the Ingress
+        run: |
+          curl -sf -X POST http://localhost/api/ask -H "Host: rahbar.local" \
+            -H "Content-Type: application/json" \
+            -d '{"question": "When is a student placed on academic warning?"}' | tee /tmp/smoke.json
+          python -c "import json; r = json.load(open('/tmp/smoke.json')); assert r['retrieved'], r"
+      - name: Evaluate and enforce the gate (section 5.4)
+        run: |
+          python eval/run_eval.py --api http://localhost --host rahbar.local \
+            --golden eval/fixtures/golden.fixture.yaml \
+            --baseline eval/fixtures/baseline.json --out /tmp/fixture-results.json
+      - name: Cluster evidence
+        if: always()
+        run: |
+          mkdir -p /tmp/evidence
+          sleep 60   # metrics-server needs a scrape or two before `top` answers
+          kubectl -n rahbar get pods -o wide               > /tmp/evidence/get-pods.txt 2>&1 || true
+          kubectl -n rahbar top pods --containers          > /tmp/evidence/kubectl-top.txt 2>&1 || true
+          kubectl -n rahbar get endpoints api              > /tmp/evidence/get-endpoints.txt 2>&1 || true
+          kubectl -n rahbar get hpa api                    > /tmp/evidence/get-hpa.txt 2>&1 || true
+          kubectl -n rahbar get networkpolicy,svc,ingress  > /tmp/evidence/get-network.txt 2>&1 || true
+          kubectl -n rahbar logs job/indexer -c indexer    > /tmp/evidence/indexer-logs.txt 2>&1 || true
+          kubectl -n rahbar logs deployment/api --tail=50  > /tmp/evidence/api-logs.txt 2>&1 || true
+          cp /tmp/fixture-results.json /tmp/evidence/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-evidence
+          path: /tmp/evidence
