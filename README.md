@@ -1,7 +1,7 @@
 # RAHBAR
 
-[![ci](https://github.com/T-Urfan/rahbar/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/T-Urfan/rahbar/actions/workflows/ci.yml)
-[![cd](https://github.com/T-Urfan/rahbar/actions/workflows/cd.yml/badge.svg?branch=main)](https://github.com/T-Urfan/rahbar/actions/workflows/cd.yml)
+[![ci](https://github.com/T-Urfan/RAHBAR-24i-3083/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/T-Urfan/RAHBAR-24i-3083/actions/workflows/ci.yml)
+[![cd](https://github.com/T-Urfan/RAHBAR-24i-3083/actions/workflows/cd.yml/badge.svg?branch=main)](https://github.com/T-Urfan/RAHBAR-24i-3083/actions/workflows/cd.yml)
 
 A FAST-NUCES student wants to know whether they can withdraw from a course in the last week
 of the semester. The answer is in clause 4.25 of a PDF on the university website, and an
@@ -179,17 +179,18 @@ On Windows, `scripts/dev.ps1` has the same targets as the Makefile (`install`, `
 
 ```bash
 cd api && pytest -q --cov=app          # 139 tests, 98% coverage, stub provider, no network
-cd indexer && pytest -q                # 128 tests, real Tesseract for the OCR test
+cd indexer && pytest -q                # 128 tests; the real-OCR one needs tesseract on PATH
 pytest -q eval                         # 11 tests of the evaluation functions
 python eval/run_eval.py --api http://127.0.0.1 --host rahbar.local   # the section 5.4 gate
 python scripts/check_submission.py
 ```
 
 `.github/workflows/ci.yml` (pull requests to `main`, pushes to `dev`): ruff and mypy, pytest
-with a 60% coverage gate, `kustomize build | kubeconform -strict` on every overlay, image
-builds, Trivy (fails on fixable HIGH/CRITICAL), and **e2e-eval**: a kind cluster, the
-manifests, the indexer Job on the fixture corpus, then `eval/run_eval.py` through the
-Ingress with the gate. `cd.yml` (push to `main`): test → build-push to Docker Hub tagged with
+with a 60% coverage gate (no system packages needed), **ocr**: the real scanned-PDF OCR test
+with Tesseract 5.5 from conda-forge, `kustomize build | kubeconform -strict` on every
+overlay, image builds (checking `tesseract` inside the indexer image), Trivy (fails on
+fixable HIGH/CRITICAL), and **e2e-eval**: a kind cluster, the manifests, the indexer Job on
+the fixture corpus, then `eval/run_eval.py` through the Ingress with the gate. `cd.yml` (push to `main`): test → build-push to Docker Hub tagged with
 the commit SHA → deploy to an ephemeral cluster, `kubectl rollout status`, smoke test.
 `main` is protected: pull request, passing CI and one approval required.
 
@@ -207,6 +208,21 @@ out on purpose: hostels. See [docs/CORPUS.md](docs/CORPUS.md).
 (`host.minikube.internal:11434`). The embedding model is pinned separately by `EMBED_MODEL`
 in the one ConfigMap both the indexer and the api read, and the api refuses to become ready
 if the index was built with another model ([ADR 0004](docs/adr/0004-llm-provider-and-data-governance.md)).
+
+## Known limitations
+
+- The evaluation numbers above were measured on the development laptop against native
+  Chroma, Redis and Ollama processes with llama3.2:3b. CI's e2e job uses the same images on
+  kind with real embeddings but the **stub** LLM, so it checks retrieval, abstention and
+  citations, not real generation.
+- Local minikube could not run on the development machine (a pre-release Windows build on
+  which WSL cannot create a VM: ENGINEERING-NOTES.md, question 7). Cluster evidence comes
+  from kind in GitHub Actions.
+- A 3B model on CPU: 8-20 s per answer, and q09 is unstable (declined in the final run,
+  answered wrongly at confidence high in others).
+- The semantic cache (threshold 0.95) serves repeats and rewordings, not paraphrases.
+- The CPU-based HPA is the wrong signal for an I/O-bound generation service
+  (ENGINEERING-NOTES.md, question 3).
 
 ## Documents
 
