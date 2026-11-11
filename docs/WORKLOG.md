@@ -78,3 +78,51 @@ ruff     All checks passed!
 mypy     api: no issues in 23 files · indexer: no issues in 11 files
 checker  53 ok · 12 warn · 49 FAIL   (audit: 44 ok · 11 warn · 53 FAIL)
 ```
+
+## 2026-11-11 · P4 + P5 · Corpus and the indexing subsystem *(AI-assisted)*
+
+**Environment:** the repo-local Git identity is set to T-Urfan
+(`188089897+T-Urfan@users.noreply.github.com`; the global config is unchanged). The P1 work
+was committed as five local commits. The attempt to install Ollama and Tesseract with
+winget failed: winget cannot run from the agent's sandbox, and running it outside the
+sandbox was refused by the permission system. **Both still need installing by the owner.**
+The `OLLAMA_*` user environment variables were set.
+
+**Corpus:** `corpus/sources.yaml` (from the instructor's list, unchanged), 9 files fetched,
+`corpus/MANIFEST.md` written. Profiled: 279 PDF pages; the Aug 2023 rules are 24/26 pages
+without a text layer (vector outlines), so OCR is essential for the version pair.
+
+**Files**
+
+| File | Change |
+| --- | --- |
+| `indexer/pipeline/extract.py` | Implemented: visible-box filter, column/gutter layout, ruled tables, size/weight headings, pdfium text-layer check, Tesseract OCR with pixel cap and timeout, HTML (nested tables, colspan, omitted end tags) and Markdown |
+| `indexer/pipeline/clean.py` | Implemented: 7 rules (see PIPELINE.md "Cleaning") |
+| `indexer/pipeline/chunk.py` | Implemented: structure-aware chunking with sentence overlap; `fixed` strategy for failure analysis |
+| `indexer/pipeline/embed.py` | Implemented: batched Ollama `/api/embed`, prefixes, validation, retries |
+| `indexer/pipeline/run.py` | Streaming `run_pipeline`; bad-document policy; SIGTERM → exit 143; safe `_index.json` paths |
+| `indexer/pipeline/store.py` | `finalize`, `discard` (never after activation), duplicate-id check, exact-pattern gc that keeps newer builds, µs-ordered versions |
+| `indexer/pipeline/config.py`, `models.py` | New settings with validation; `Chunk.extra` metadata |
+| `indexer/requirements*.txt` | `pdf2image` removed (pdfium renders); `fpdf2` added for test PDFs |
+| `indexer/tests/*` | `pdfgen.py` plus 6 new test modules; the fake Chroma client made faithful to chromadb 1.0.12 |
+| `docs/CORPUS.md`, `docs/PIPELINE.md`, `docs/AI-USAGE.md` | Written from measurements |
+
+**Bugs found on the real corpus, before the tests:** hidden off-page text (every handbook
+clause duplicated), a missed 9 pt gutter, 183 chart values deleted as "page numbers",
+running headers marked as headings, and 118 s spent parsing vector outlines.
+
+**Independent review (two read-only agents):** 14 + 14 findings. Fixed: the confirmed
+critical one (a failure after activation could delete the live collection), gc prefix
+matching, header removal deleting a sentence, hyphenated compounds, TOC rule deleting fee
+lists and grade weights, HTML table losses, false headings, short overlap, oversized table
+rows, SIGTERM cleanup, OCR timeout and pixel cap, `_index.json` path traversal, faithful
+fakes, test environment isolation. Each has a regression test.
+
+**Results**
+
+```text
+indexer  127 passed, 1 skipped (real OCR: tesseract not installed)   coverage 96%
+api       43 passed                                                   coverage 92.64%
+ruff     All checks passed!     mypy: no issues (api 23 files, indexer 11 files)
+corpus   469 chunks · 57,427 source words · amplification 1.024 · peak memory 119 MB
+```
