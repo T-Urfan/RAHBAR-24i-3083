@@ -255,3 +255,11 @@ def test_min_confidence_is_configurable(floor: str, answered: bool) -> None:
             Scripted(low([Citation(source=RULES.source, section=RULES.section)])),
             Settings(relevance_floor=0.5, min_confidence=floor))
     assert r.answered_from_context is answered
+
+
+def test_an_answer_that_says_not_covered_is_an_abstention_whatever_the_flag() -> None:
+    contradictory = Answer(reasoning="r", answer="The documents I have do not cover this.",
+                           citations=[Citation(source=RULES.source, section=RULES.section)],
+                           answered_from_context=True, confidence="high")
+    r = ask("How do I apply for a hostel room?", ListRetriever([RULES]), Scripted(contradictory))
+    assert r.answered_from_context is False and r.citations == []

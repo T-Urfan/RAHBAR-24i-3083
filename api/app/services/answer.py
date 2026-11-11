@@ -212,7 +212,9 @@ def _answer(question: str, retriever: Retriever, provider: LLMProvider, settings
     trace.ms["generate"] = round((time.perf_counter() - t) * 1000, 1)
     if answer is None:
         return _fallback(trace.fallback or "schema", trace, passages, provider)
-    if not answer.answered_from_context:
+    # A reply that says "not covered" while flagging answered_from_context is the model
+    # contradicting itself (measured: 200/30 probe p01); the text wins.
+    if not answer.answered_from_context or _says_not_covered(answer.answer):
         return _abstain("model", trace, passages, provider)
     # Measured (PIPELINE.md, "Generation"): every correct golden answer came back "high";
     # every answer at "low" was a wrong answer or an invented one about an absent topic.
@@ -226,6 +228,14 @@ def _answer(question: str, retriever: Retriever, provider: LLMProvider, settings
         assert cache is not None and vector is not None and generation is not None
         cache.store(vector, generation, trace.include_superseded, question, response)
     return response
+
+
+def _says_not_covered(text: str) -> bool:
+    words = " ".join(text.casefold().split())
+    return words.startswith(_NOT_COVERED) or words in ("", "i don't know.", "i do not know.")
+
+
+_NOT_COVERED = " ".join(ABSTAIN_TEXT.casefold().split()).rstrip(".")
 
 
 def _turn(question: str, response: AskResponse) -> dict[str, Any]:
