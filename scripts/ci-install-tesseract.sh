@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install Tesseract on a GitHub runner. The runner's Azure apt mirror sometimes fails DNS
-# (seen on our first CI run), so retry, then fall back to the main Ubuntu archive.
+# (our first two CI runs), so retry, then fall back to the main Ubuntu archive.
 set -u
 for attempt in 1 2 3; do
   if sudo apt-get -o Acquire::Retries=3 update -q && \
@@ -13,4 +13,7 @@ for attempt in 1 2 3; do
     /etc/apt/sources.list.d/*.sources /etc/apt/sources.list 2>/dev/null || true
   sleep 10
 done
-exit 1
+# Do not fail the job on a package-mirror outage: only one test needs Tesseract, and it
+# skips itself (with a reason in the pytest summary) when the binary is missing.
+echo "::warning::tesseract-ocr could not be installed; the real-OCR test will be skipped"
+exit 0
