@@ -21,6 +21,7 @@ from .logjson import configure_logging, request_id_var
 from .providers.llm import get_provider
 from .retrieval import get_retriever
 from .routes import ask, health, metrics
+from .services.cache import SemanticCache
 from .services.readiness import ReadinessChecker
 
 log = logging.getLogger("rahbar.api")
@@ -47,6 +48,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.provider = get_provider(settings)
     app.state.redis = _redis_client(settings)
     app.state.readiness = ReadinessChecker(settings, app.state.retriever, app.state.redis)
+    app.state.cache = (SemanticCache(app.state.redis, settings)
+                       if app.state.redis is not None and settings.cache_enabled else None)
     # This process only reads the index; the indexer Job writes it (section 4.2).
     # Check the embedding pin once now, so a mismatch is in the log from the first
     # second; /readyz keeps re-checking it, because a re-index can change it later.
@@ -55,6 +58,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         "api started",
         extra={"retriever": settings.retriever, "llm_provider": settings.llm_provider,
                "embed_model": settings.embed_model, "top_k": settings.top_k,
+               "relevance_floor": settings.relevance_floor,
+               "cache_threshold": settings.cache_threshold,
+               "temperature": settings.temperature, "llm_model": settings.llm_model,
                "ready": ready, "checks": body["checks"]},
     )
     yield
