@@ -14,6 +14,8 @@ spec:
       labels: {app.kubernetes.io/name: ollama, app.kubernetes.io/part-of: rahbar}
     spec:
       automountServiceAccountToken: false
+      # no CHROMA_PORT=tcp://... style variables: Chroma 1.x reads CHROMA_* as its config
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

@@ -24,6 +24,8 @@ spec:
     spec:
       serviceAccountName: api
       automountServiceAccountToken: false
+      # no CHROMA_PORT=tcp://... style variables: Chroma 1.x reads CHROMA_* as its config
+      enableServiceLinks: false
       # longer than the preStop sleep plus uvicorn's 20 s drain of in-flight questions
       terminationGracePeriodSeconds: 45
       securityContext:

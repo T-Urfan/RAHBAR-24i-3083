@@ -17,6 +17,8 @@ spec:
     spec:
       serviceAccountName: ui
       automountServiceAccountToken: false
+      # no CHROMA_PORT=tcp://... style variables: Chroma 1.x reads CHROMA_* as its config
+      enableServiceLinks: false
       terminationGracePeriodSeconds: 15
       securityContext:
         runAsNonRoot: true

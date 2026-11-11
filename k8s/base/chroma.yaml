@@ -19,6 +19,8 @@ spec:
     spec:
       serviceAccountName: chroma
       automountServiceAccountToken: false
+      # no CHROMA_PORT=tcp://... style variables: Chroma 1.x reads CHROMA_* as its config
+      enableServiceLinks: false
       terminationGracePeriodSeconds: 30
       securityContext:
         runAsNonRoot: true
