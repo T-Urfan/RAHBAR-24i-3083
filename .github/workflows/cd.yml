@@ -137,10 +137,22 @@ jobs:
           kubectl -n rahbar rollout status deployment/ui --timeout=120s
       - name: Smoke test through the Ingress
         run: |
+          # ingress-nginx needs a few seconds to pick up new endpoints (503 until then)
+          for attempt in $(seq 1 24); do
+            code=$(curl -s -o /tmp/smoke.json -w '%{http_code}' -X POST http://localhost/api/ask \
+              -H "Host: rahbar.local" -H "Content-Type: application/json" \
+              -d '{"question": "How much is the BS fee per credit hour?"}' || echo 000)
+            echo "attempt $attempt: HTTP $code"
+            [ "$code" = "200" ] && break
+            sleep 5
+          done
+          if [ "$code" != "200" ]; then
+            kubectl -n rahbar describe ingress rahbar
+            kubectl -n ingress-nginx logs deploy/ingress-nginx-controller --tail=40
+            exit 1
+          fi
+          cat /tmp/smoke.json
           curl -sf http://localhost/ -H "Host: rahbar.local" | grep -qi rahbar
-          curl -sf -X POST http://localhost/api/ask -H "Host: rahbar.local" \
-            -H "Content-Type: application/json" \
-            -d '{"question": "How much is the BS fee per credit hour?"}' | tee /tmp/smoke.json
           python3 -c "import json; r = json.load(open('/tmp/smoke.json')); assert r['retrieved'] and r['answered_from_context'], r"
           echo "deployed images:"
           kubectl -n rahbar get deploy -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.template.spec.containers[0].image}{"\n"}{end}'

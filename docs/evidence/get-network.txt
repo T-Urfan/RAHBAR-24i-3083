@@ -1,0 +1,22 @@
+# kind cluster in GitHub Actions, ci.yml e2e-eval job, https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43073251211 (commit 64dccb3)
+# fixture corpus indexed by the indexer Job; api 3/3 ready
+NAME                                               POD-SELECTOR                     AGE
+networkpolicy.networking.k8s.io/allow-dns          <none>                           2m10s
+networkpolicy.networking.k8s.io/api-egress         app.kubernetes.io/name=api       2m10s
+networkpolicy.networking.k8s.io/api-ingress        app.kubernetes.io/name=api       2m10s
+networkpolicy.networking.k8s.io/chroma-ingress     app.kubernetes.io/name=chroma    2m10s
+networkpolicy.networking.k8s.io/default-deny-all   <none>                           2m10s
+networkpolicy.networking.k8s.io/indexer-egress     app.kubernetes.io/name=indexer   2m10s
+networkpolicy.networking.k8s.io/ollama             app.kubernetes.io/name=ollama    2m10s
+networkpolicy.networking.k8s.io/redis-ingress      app.kubernetes.io/name=redis     2m10s
+networkpolicy.networking.k8s.io/ui-ingress         app.kubernetes.io/name=ui        2m10s
+
+NAME             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)     AGE
+service/api      ClusterIP   10.96.165.149   <none>        8000/TCP    2m11s
+service/chroma   ClusterIP   10.96.163.12    <none>        8000/TCP    2m11s
+service/ollama   ClusterIP   10.96.164.223   <none>        11434/TCP   2m11s
+service/redis    ClusterIP   10.96.143.91    <none>        6379/TCP    2m11s
+service/ui       ClusterIP   10.96.82.33     <none>        8080/TCP    2m11s
+
+NAME                               CLASS   HOSTS          ADDRESS     PORTS   AGE
+ingress.networking.k8s.io/rahbar   nginx   rahbar.local   localhost   80      2m10s

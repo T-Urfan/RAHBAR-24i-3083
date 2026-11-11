@@ -222,9 +222,22 @@ jobs:
         run: kubectl -n rahbar rollout status deployment/api --timeout=300s
       - name: Smoke test through the Ingress
         run: |
-          curl -sf -X POST http://localhost/api/ask -H "Host: rahbar.local" \
-            -H "Content-Type: application/json" \
-            -d '{"question": "When is a student placed on academic warning?"}' | tee /tmp/smoke.json
+          # ingress-nginx needs a few seconds to pick up new endpoints (503 until then)
+          for attempt in $(seq 1 24); do
+            code=$(curl -s -o /tmp/smoke.json -w '%{http_code}' -X POST http://localhost/api/ask \
+              -H "Host: rahbar.local" -H "Content-Type: application/json" \
+              -d '{"question": "When is a student placed on academic warning?"}' || echo 000)
+            echo "attempt $attempt: HTTP $code"
+            [ "$code" = "200" ] && break
+            sleep 5
+          done
+          if [ "$code" != "200" ]; then
+            cat /tmp/smoke.json || true
+            kubectl -n rahbar describe ingress rahbar
+            kubectl -n ingress-nginx logs deploy/ingress-nginx-controller --tail=40
+            exit 1
+          fi
+          cat /tmp/smoke.json
           python -c "import json; r = json.load(open('/tmp/smoke.json')); assert r['retrieved'], r"
       - name: Evaluate and enforce the gate (section 5.4)
         run: |

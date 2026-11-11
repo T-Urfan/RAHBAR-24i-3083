@@ -1,0 +1,4 @@
+# kind cluster in GitHub Actions, ci.yml e2e-eval job, https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43073251211 (commit 64dccb3)
+# fixture corpus indexed by the indexer Job; api 3/3 ready
+NAME   REFERENCE        TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+api    Deployment/api   2%/70%    3         8         3          2m10s
