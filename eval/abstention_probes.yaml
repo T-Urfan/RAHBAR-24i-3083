@@ -1,0 +1,69 @@
+# Abstention probes: questions the corpus cannot answer, in many wordings.
+#
+# Added on 11 November 2026, AFTER the golden set, because a UI screenshot run answered
+# "How do I apply for a hostel room?" (no campus named) with an invented instruction, at
+# confidence "low", while the golden wording (q17) was declined. The golden set is kept as
+# written before tuning; these probes measure how robust abstention is. Every one must
+# return answered_from_context: false. Run:
+#   python eval/run_eval.py --api ... --golden eval/abstention_probes.yaml --out ...
+
+questions:
+  - id: p01
+    type: abstain
+    must_abstain: true
+    relevant: []
+    question: "How do I apply for a hostel room?"
+
+  - id: p02
+    type: abstain
+    must_abstain: true
+    relevant: []
+    question: "Is there a girls hostel and how much does it cost per month?"
+
+  - id: p03
+    type: abstain
+    must_abstain: true
+    relevant: []
+    question: "What are the hostel rules for visitors?"
+
+  - id: p04
+    type: abstain
+    must_abstain: true
+    relevant: []
+    question: "Can a first semester student get a hostel seat?"
+
+  - id: p05
+    type: abstain
+    must_abstain: true
+    relevant: []
+    question: "What is the hostel mess fee?"
+
+  - id: p06
+    type: abstain
+    must_abstain: true
+    relevant: []
+    question: "Who is the hostel warden at the Peshawar campus?"
+
+  - id: p07
+    type: abstain
+    must_abstain: true
+    relevant: []
+    question: "How much is the university bus fee per semester?"
+
+  - id: p08
+    type: abstain
+    must_abstain: true
+    relevant: []
+    question: "What is the parking fee for students who bring a car?"
+
+  - id: p09
+    type: abstain
+    must_abstain: true
+    relevant: []
+    question: "What is the campus WiFi password?"
+
+  - id: p10
+    type: abstain
+    must_abstain: true
+    relevant: []
+    question: "What time does the cafeteria close on Fridays?"

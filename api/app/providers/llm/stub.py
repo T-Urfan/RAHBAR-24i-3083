@@ -12,7 +12,8 @@ from ...schemas import Answer, Citation, Passage
 class StubProvider:
     name = "stub"
 
-    def generate(self, question: str, passages: list[Passage]) -> Answer:
+    def generate(self, question: str, passages: list[Passage],
+                 retry_reason: str | None = None) -> Answer:
         if not passages:
             return Answer(
                 reasoning="stub: nothing was retrieved",
@@ -28,5 +29,7 @@ class StubProvider:
             f"The first one says: {top.text}",
             citations=[Citation(source=top.source, section=top.section, page=top.page)],
             answered_from_context=True,
-            confidence="low",
+            # neutral: the stub has no judgement, and MIN_CONFIDENCE (default medium)
+            # declines "low" answers from a real model
+            confidence="medium",
         )

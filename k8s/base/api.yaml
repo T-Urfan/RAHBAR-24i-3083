@@ -1,0 +1,124 @@
+# The api: three replicas that only READ the index (section 4.2). Liveness asks "is the
+# process alive?" (/healthz touches nothing); readiness asks "can it serve?" (/readyz checks
+# Chroma, a non-empty collection, the embedding pin and Redis). Swapping them would turn a
+# slow Chroma into a restart storm (docs/ENGINEERING-NOTES.md, question 2).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: rahbar
+  labels: {app.kubernetes.io/name: api, app.kubernetes.io/part-of: rahbar}
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels: {app.kubernetes.io/name: api}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: api, app.kubernetes.io/part-of: rahbar}
+    spec:
+      serviceAccountName: api
+      automountServiceAccountToken: false
+      # no CHROMA_PORT=tcp://... style variables: Chroma 1.x reads CHROMA_* as its config
+      enableServiceLinks: false
+      # longer than the preStop sleep plus uvicorn's 20 s drain of in-flight questions
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: api
+          image: rahbar-api:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8000}
+          envFrom:
+            - configMapRef: {name: rahbar-config}
+            # LLM_API_KEY for LLM_PROVIDER=hosted; created with `kubectl create secret`
+            - secretRef: {name: rahbar-secret, optional: true}
+          startupProbe:        # finished booting? the other two wait while this runs
+            httpGet: {path: /healthz, port: http}
+            failureThreshold: 30
+            periodSeconds: 2
+          livenessProbe:       # still working? failure: restart the container
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:      # can it take traffic? failure: out of the Service, not restarted
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            # leave the Service's endpoints before uvicorn stops accepting connections
+            preStop:
+              exec: {command: ["sleep", "10"]}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 160Mi
+            limits:
+              cpu: "1"
+              memory: 384Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: rahbar
+  labels: {app.kubernetes.io/name: api, app.kubernetes.io/part-of: rahbar}
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/name: api}
+  ports:
+    - {name: http, port: 8000, targetPort: http}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api
+  namespace: rahbar
+  labels: {app.kubernetes.io/name: api, app.kubernetes.io/part-of: rahbar}
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: api}
+  minReplicas: 3
+  maxReplicas: 8
+  metrics:
+    # CPU is what metrics-server offers. While a pod waits on the LLM its CPU stays low, so
+    # this mostly reacts to retrieval and JSON work; ENGINEERING-NOTES.md question 3 explains
+    # why rahbar_asks_in_flight is the signal that should scale this service.
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 70}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api
+  namespace: rahbar
+  labels: {app.kubernetes.io/name: api, app.kubernetes.io/part-of: rahbar}
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels: {app.kubernetes.io/name: api}

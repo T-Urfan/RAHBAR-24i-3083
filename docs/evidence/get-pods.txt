@@ -1,0 +1,12 @@
+# kind cluster in GitHub Actions, ci.yml e2e-eval job, https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43073251211 (commit 64dccb3)
+# fixture corpus indexed by the indexer Job; api 3/3 ready
+NAME                      READY   STATUS      RESTARTS   AGE     IP            NODE                   NOMINATED NODE   READINESS GATES
+api-7f46d87c59-77x2j      1/1     Running     0          2m10s   10.244.0.11   rahbar-control-plane   <none>           <none>
+api-7f46d87c59-ngrxr      1/1     Running     0          2m10s   10.244.0.12   rahbar-control-plane   <none>           <none>
+api-7f46d87c59-rfc5m      1/1     Running     0          2m10s   10.244.0.10   rahbar-control-plane   <none>           <none>
+chroma-0                  1/1     Running     0          2m10s   10.244.0.20   rahbar-control-plane   <none>           <none>
+indexer-zbp7g             0/1     Completed   0          73s     10.244.0.22   rahbar-control-plane   <none>           <none>
+ollama-69f788b454-ptfws   1/1     Running     0          2m10s   10.244.0.13   rahbar-control-plane   <none>           <none>
+redis-85976948f-pj8p6     1/1     Running     0          2m10s   10.244.0.19   rahbar-control-plane   <none>           <none>
+ui-584d87c6d5-gq264       1/1     Running     0          2m10s   10.244.0.15   rahbar-control-plane   <none>           <none>
+ui-584d87c6d5-vqr47       1/1     Running     0          2m10s   10.244.0.14   rahbar-control-plane   <none>           <none>

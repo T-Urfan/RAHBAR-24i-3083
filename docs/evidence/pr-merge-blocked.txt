@@ -1,0 +1,29 @@
+# PR #1 dev -> main, read with: gh pr view 1 --json mergeStateStatus,reviewDecision,mergeable  (2026-11-11T18:23Z)
+# every required check passed; the merge is still BLOCKED because main requires 1 approving review
+{
+    "headRefOid": "fcf9d037322d4c8bfb7b2d87a6bba1ae45ef7f93",
+    "mergeStateStatus": "BLOCKED",
+    "mergeable": "MERGEABLE",
+    "reviewDecision": "REVIEW_REQUIRED",
+    "url": "https://github.com/T-Urfan/RAHBAR-24i-3083/pull/1"
+}
+
+# gh pr checks 1
+build	pass	1m36s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075914830/job/130715998156	
+build	pass	1m37s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075931385/job/130716070753	
+e2e-eval	pass	4m32s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075914830/job/130716917188	
+e2e-eval	pass	4m6s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075931385/job/130717001650	
+lint	pass	42s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075914830/job/130715566706	
+lint	pass	44s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075931385/job/130715625653	
+manifests	pass	20s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075931385/job/130715626308	
+manifests	pass	9s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075914830/job/130715566202	
+ocr	pass	37s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075931385/job/130715626300	
+ocr	pass	38s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075914830/job/130715567692	
+scan (rahbar-api)	pass	47s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075931385/job/130717001976	
+scan (rahbar-api)	pass	57s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075914830/job/130716917253	
+scan (rahbar-indexer)	pass	38s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075914830/job/130716917327	
+scan (rahbar-indexer)	pass	46s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075931385/job/130717001734	
+scan (rahbar-ui)	pass	25s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075914830/job/130716917278	
+scan (rahbar-ui)	pass	31s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075931385/job/130717001704	
+test	pass	31s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075914830/job/130715566794	
+test	pass	37s	https://github.com/T-Urfan/RAHBAR-24i-3083/actions/runs/43075931385/job/130715626232	

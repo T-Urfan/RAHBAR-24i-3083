@@ -1,0 +1,19 @@
+# Published images from Docker Hub, tagged by commit SHA, never :latest. cd.yml sets the
+# real repository and tag before it deploys:
+#   kustomize edit set image rahbar-api=docker.io/<user>/rahbar-api:<sha> ...
+# The committed tag below is a placeholder that kubeconform validates in CI.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - {name: rahbar-api, newName: docker.io/taahaurfan/rahbar-api, newTag: "0000000"}
+  - {name: rahbar-ui, newName: docker.io/taahaurfan/rahbar-ui, newTag: "0000000"}
+  - {name: rahbar-indexer, newName: docker.io/taahaurfan/rahbar-indexer, newTag: "0000000"}
+patches:
+  # production replicas of the ui: survive one pod being rescheduled
+  - target: {kind: Deployment, name: ui}
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2

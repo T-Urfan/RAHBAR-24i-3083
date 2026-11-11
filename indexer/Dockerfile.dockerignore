@@ -1,0 +1,9 @@
+# Build context is the repo root: send only what indexer/Dockerfile copies.
+**
+!indexer/requirements.txt
+!indexer/pipeline/**
+!corpus/fetch.py
+!corpus/sources.yaml
+!eval/fixtures/**
+**/__pycache__
+**/*.pyc

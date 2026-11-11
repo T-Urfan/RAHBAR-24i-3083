@@ -1,0 +1,85 @@
+# The ephemeral kind cluster in GitHub Actions (ci.yml e2e-eval, cd.yml deploy).
+# Differences from prod, each for a reason:
+# - the corpus is the three fixture documents baked into the indexer image (fast, and CI
+#   never downloads from the university site);
+# - Ollama runs in the cluster and serves ONLY the embedding model, so retrieval, recall
+#   and the pin are real; generation uses the stub provider (no model in CI, section 6);
+# - the weekly CronJob is suspended.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../prod
+  - ollama.yaml
+images:
+  - {name: docker.io/taahaurfan/rahbar-api, newName: rahbar-api, newTag: ci}
+  - {name: docker.io/taahaurfan/rahbar-ui, newName: rahbar-ui, newTag: ci}
+  - {name: docker.io/taahaurfan/rahbar-indexer, newName: rahbar-indexer, newTag: ci}
+patches:
+  - target: {kind: ConfigMap, name: rahbar-config}
+    patch: |-
+      - {op: replace, path: /data/LLM_PROVIDER, value: stub}
+      - {op: replace, path: /data/OLLAMA_URL, value: "http://ollama:11434"}
+      - {op: replace, path: /data/OCR_ENABLED, value: "false"}
+  - target: {kind: Job, name: indexer}
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/initContainers
+        value:
+          - name: pull-embedding-model
+            image: docker.io/taahaurfan/rahbar-indexer
+            imagePullPolicy: IfNotPresent
+            # Ollama may still be starting when the Job is created: retry for ~10 minutes.
+            command:
+              - python
+              - -c
+              - |
+                import os, sys, time, httpx
+                model = os.environ["EMBED_MODEL"]
+                for attempt in range(60):
+                    try:
+                        r = httpx.post("http://ollama:11434/api/pull",
+                                       json={"model": model, "stream": False}, timeout=900)
+                        r.raise_for_status()
+                        print("pulled", model, r.text)
+                        sys.exit(0)
+                    except Exception as exc:
+                        print(f"attempt {attempt + 1}: ollama not ready ({exc})", flush=True)
+                        time.sleep(10)
+                sys.exit("ollama never became reachable")
+            envFrom:
+              - configMapRef: {name: rahbar-config}
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                cpu: 200m
+                memory: 128Mi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+      - op: replace
+        path: /spec/template/spec/containers/0/env
+        value:
+          - {name: CORPUS_DIR, value: /app/fixtures}
+  - target: {kind: CronJob, name: reindex}
+    patch: |-
+      - {op: add, path: /spec/suspend, value: true}
+  # in-cluster Ollama is a pod, so ipBlock rules do not cover it: allow it by label
+  - target: {kind: NetworkPolicy, name: api-egress}
+    patch: |-
+      - op: add
+        path: /spec/egress/-
+        value:
+          to: [{podSelector: {matchLabels: {app.kubernetes.io/name: ollama}}}]
+          ports: [{protocol: TCP, port: 11434}]
+  - target: {kind: NetworkPolicy, name: indexer-egress}
+    patch: |-
+      - op: add
+        path: /spec/egress/-
+        value:
+          to: [{podSelector: {matchLabels: {app.kubernetes.io/name: ollama}}}]
+          ports: [{protocol: TCP, port: 11434}]

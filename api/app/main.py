@@ -16,13 +16,25 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
-from .config import get_settings
+from .config import Settings, get_settings
 from .logjson import configure_logging, request_id_var
 from .providers.llm import get_provider
 from .retrieval import get_retriever
 from .routes import ask, health, metrics
+from .services.cache import SemanticCache
+from .services.readiness import ReadinessChecker
 
 log = logging.getLogger("rahbar.api")
+
+
+def _redis_client(settings: Settings) -> object | None:
+    """Building a redis-py client opens no connection; the first command does."""
+    if not settings.redis_host:
+        return None
+    import redis
+
+    return redis.Redis(host=settings.redis_host, port=settings.redis_port,
+                       socket_connect_timeout=1.0, socket_timeout=1.0)
 
 
 @asynccontextmanager
@@ -30,15 +42,26 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(settings.log_level)
     app.state.settings = settings
+    # Neither of these connects to anything: Chroma and Redis may be down at startup,
+    # and that must make the pod NOT READY, never crash it (section 4.3).
     app.state.retriever = get_retriever(settings)
     app.state.provider = get_provider(settings)
-    # STARTER-TODO(4.4): compare the collection's embedding-model metadata with
-    # settings.embed_model here, and make /readyz fail on a mismatch.
-    # This process only reads the index. The indexer Job writes it.
+    app.state.redis = _redis_client(settings)
+    app.state.readiness = ReadinessChecker(settings, app.state.retriever, app.state.redis)
+    app.state.cache = (SemanticCache(app.state.redis, settings)
+                       if app.state.redis is not None and settings.cache_enabled else None)
+    # This process only reads the index; the indexer Job writes it (section 4.2).
+    # Check the embedding pin once now, so a mismatch is in the log from the first
+    # second; /readyz keeps re-checking it, because a re-index can change it later.
+    ready, body = app.state.readiness.check(force=True)
     log.info(
         "api started",
         extra={"retriever": settings.retriever, "llm_provider": settings.llm_provider,
-               "embed_model": settings.embed_model, "top_k": settings.top_k},
+               "embed_model": settings.embed_model, "top_k": settings.top_k,
+               "relevance_floor": settings.relevance_floor,
+               "cache_threshold": settings.cache_threshold,
+               "temperature": settings.temperature, "llm_model": settings.llm_model,
+               "ready": ready, "checks": body["checks"]},
     )
     yield
 

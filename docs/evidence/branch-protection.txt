@@ -1,0 +1,89 @@
+# gh api repos/T-Urfan/RAHBAR-24i-3083/branches/main/protection   (read back 2026-11-11T15:30Z)
+{
+    "url": "https://api.github.com/repos/T-Urfan/RAHBAR-24i-3083/branches/main/protection",
+    "required_status_checks": {
+        "url": "https://api.github.com/repos/T-Urfan/RAHBAR-24i-3083/branches/main/protection/required_status_checks",
+        "strict": true,
+        "contexts": [
+            "lint",
+            "test",
+            "manifests",
+            "build",
+            "scan (rahbar-api)",
+            "scan (rahbar-ui)",
+            "scan (rahbar-indexer)",
+            "e2e-eval"
+        ],
+        "contexts_url": "https://api.github.com/repos/T-Urfan/RAHBAR-24i-3083/branches/main/protection/required_status_checks/contexts",
+        "checks": [
+            {
+                "context": "lint",
+                "app_id": 15368
+            },
+            {
+                "context": "test",
+                "app_id": 15368
+            },
+            {
+                "context": "manifests",
+                "app_id": 15368
+            },
+            {
+                "context": "build",
+                "app_id": 15368
+            },
+            {
+                "context": "scan (rahbar-api)",
+                "app_id": null
+            },
+            {
+                "context": "scan (rahbar-ui)",
+                "app_id": null
+            },
+            {
+                "context": "scan (rahbar-indexer)",
+                "app_id": null
+            },
+            {
+                "context": "e2e-eval",
+                "app_id": 15368
+            }
+        ]
+    },
+    "required_pull_request_reviews": {
+        "url": "https://api.github.com/repos/T-Urfan/RAHBAR-24i-3083/branches/main/protection/required_pull_request_reviews",
+        "dismiss_stale_reviews": true,
+        "require_code_owner_reviews": false,
+        "require_last_push_approval": false,
+        "required_approving_review_count": 1
+    },
+    "required_signatures": {
+        "url": "https://api.github.com/repos/T-Urfan/RAHBAR-24i-3083/branches/main/protection/required_signatures",
+        "enabled": false
+    },
+    "enforce_admins": {
+        "url": "https://api.github.com/repos/T-Urfan/RAHBAR-24i-3083/branches/main/protection/enforce_admins",
+        "enabled": false
+    },
+    "required_linear_history": {
+        "enabled": false
+    },
+    "allow_force_pushes": {
+        "enabled": false
+    },
+    "allow_deletions": {
+        "enabled": false
+    },
+    "block_creations": {
+        "enabled": false
+    },
+    "required_conversation_resolution": {
+        "enabled": true
+    },
+    "lock_branch": {
+        "enabled": false
+    },
+    "allow_fork_syncing": {
+        "enabled": false
+    }
+}

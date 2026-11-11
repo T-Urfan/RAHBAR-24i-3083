@@ -1,0 +1,9 @@
+# Store and check out text files with LF line endings, whatever core.autocrlf says.
+# Dockerfiles, shell snippets, YAML and Python run inside Linux containers and CI;
+# CRLF there breaks shebangs and some parsers. PowerShell scripts keep CRLF.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+
+*.pdf binary
+*.png binary
+*.jpg binary

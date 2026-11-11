@@ -1,0 +1,3 @@
+# Embedding-pin guardrail (section 4.4): EMBED_MODEL changed on the api only, no re-index
+# Local api, 2026-11-11, index built with nomic-embed-text. GET /readyz -> HTTP 503; GET /healthz -> 200 {"status":"alive"}
+{"ts": "2026-11-11T14:02:15Z", "level": "WARNING", "logger": "rahbar.readiness", "msg": "not ready", "request_id": "-", "failed": ["embed_model_mismatch"], "checks": {"chroma": "ok", "collection": "rahbar-v20261111t134018063650-eea2c6: 501 chunks", "embed_model": "embedding pin mismatch: index rahbar-v20261111t134018063650-eea2c6 was built with nomic-embed-text (dimension 768) but EMBED_MODEL=mxbai-embed-large; refusing to be ready. Re-run the indexer with this model, or set EMBED_MODEL back.", "redis": "ok"}}

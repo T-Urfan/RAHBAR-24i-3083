@@ -1,0 +1,158 @@
+# CD: every push to main (that is, every merged pull request).
+# test -> build-push (Docker Hub, tagged by commit SHA, never :latest) -> deploy to an
+# ephemeral kind cluster, wait for the rollout, smoke test through the Ingress.
+#
+# Repository secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (an access token, not the password).
+name: cd
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-main
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            api/requirements-dev.txt
+            indexer/requirements-dev.txt
+      - run: pip install -r api/requirements-dev.txt -r indexer/requirements-dev.txt
+      - name: ruff and mypy
+        run: |
+          ruff check api indexer eval corpus
+          (cd api && mypy app)
+          (cd indexer && mypy pipeline)
+      - name: pytest (the real-OCR test runs in the ocr job)
+        run: |
+          (cd api && pytest -q -rs --cov=app --cov-fail-under=60)
+          (cd indexer && pytest -q -rs --cov=pipeline --cov-fail-under=60)
+          pytest -q -rs eval
+
+  # Same as ci.yml: Tesseract from conda-forge, the real scanned-PDF OCR test must run.
+  ocr:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mamba-org/setup-micromamba@v3.2.1
+        with:
+          environment-name: ocr
+          create-args: python=3.12 tesseract=5.5
+          init-shell: bash
+      - run: tesseract --list-langs | grep -qx eng
+      - run: pip install -r indexer/requirements-dev.txt
+      - env:
+          REQUIRE_TESSERACT: "1"
+        run: cd indexer && pytest -v -rs tests/test_extract.py -k real_ocr
+
+  build-push:
+    needs: [test, ocr]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Push api
+        uses: docker/build-push-action@v6
+        with:
+          context: api
+          push: true
+          tags: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/rahbar-api:${{ github.sha }}
+      - name: Push ui
+        uses: docker/build-push-action@v6
+        with:
+          context: ui
+          push: true
+          tags: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/rahbar-ui:${{ github.sha }}
+      - name: Push indexer
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: indexer/Dockerfile
+          push: true
+          tags: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/rahbar-indexer:${{ github.sha }}
+
+  deploy:
+    needs: [build-push]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create an ephemeral kind cluster
+        uses: helm/kind-action@v1.10.0
+        with:
+          cluster_name: rahbar
+          config: .github/kind-config.yaml
+      - name: Ingress controller
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.0/deploy/static/provider/kind/deploy.yaml
+          kubectl -n ingress-nginx wait --for=condition=available deployment/ingress-nginx-controller --timeout=240s
+      - name: Point the manifests at this commit's images
+        env:
+          REPO: docker.io/${{ secrets.DOCKERHUB_USERNAME }}
+          SHA: ${{ github.sha }}
+        run: |
+          cd k8s/overlays/ci
+          kubectl kustomize . > /dev/null
+          curl -sSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.5.0/kustomize_v5.5.0_linux_amd64.tar.gz" | tar -xz
+          ./kustomize edit set image \
+            "docker.io/taahaurfan/rahbar-api=$REPO/rahbar-api:$SHA" \
+            "docker.io/taahaurfan/rahbar-ui=$REPO/rahbar-ui:$SHA" \
+            "docker.io/taahaurfan/rahbar-indexer=$REPO/rahbar-indexer:$SHA"
+          rm kustomize
+          kubectl kustomize . | grep -E "image: .*rahbar-(api|ui|indexer)" | sort -u
+      - name: Deploy
+        run: kubectl apply -k k8s/overlays/ci
+      - name: Wait for the rollout
+        run: |
+          kubectl -n rahbar rollout status statefulset/chroma --timeout=300s
+          kubectl -n rahbar rollout status deployment/redis --timeout=180s
+          kubectl -n rahbar rollout status deployment/ollama --timeout=300s
+          kubectl -n rahbar exec deploy/ollama -- ollama pull nomic-embed-text
+          kubectl -n rahbar delete job indexer --ignore-not-found --wait=true
+          kubectl apply -k k8s/overlays/ci
+          kubectl -n rahbar wait --for=condition=complete job/indexer --timeout=900s
+          kubectl -n rahbar rollout status deployment/api --timeout=300s
+          kubectl -n rahbar rollout status deployment/ui --timeout=120s
+      - name: Smoke test through the Ingress
+        run: |
+          # ingress-nginx needs a few seconds to pick up new endpoints (503 until then)
+          for attempt in $(seq 1 24); do
+            code=$(curl -s -o /tmp/smoke.json -w '%{http_code}' -X POST http://localhost/api/ask \
+              -H "Host: rahbar.local" -H "Content-Type: application/json" \
+              -d '{"question": "How much is the BS fee per credit hour?"}' || echo 000)
+            echo "attempt $attempt: HTTP $code"
+            [ "$code" = "200" ] && break
+            sleep 5
+          done
+          if [ "$code" != "200" ]; then
+            kubectl -n rahbar describe ingress rahbar
+            kubectl -n ingress-nginx logs deploy/ingress-nginx-controller --tail=40
+            exit 1
+          fi
+          cat /tmp/smoke.json
+          curl -sf http://localhost/ -H "Host: rahbar.local" | grep -qi rahbar
+          python3 -c "import json; r = json.load(open('/tmp/smoke.json')); assert r['retrieved'] and r['answered_from_context'], r"
+          echo "deployed images:"
+          kubectl -n rahbar get deploy -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.template.spec.containers[0].image}{"\n"}{end}'
